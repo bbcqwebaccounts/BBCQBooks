@@ -56,7 +56,9 @@ const defaultSettings: Setting[] = [
   { key: 'ADMIN_PASSWORD', value: "bbcqbooks" },
   { key: 'max_borrow_weeks', value: "4" },
   { key: 'google_client_id', value: "" },
-  { key: 'google_apps_script_url', value: "" }
+  { key: 'google_apps_script_url', value: "" },
+  { key: 'google_drive_folder_id', value: "1tD6K4k2FuW3R-jzymmBRevzir1NBtXWI" },
+  { key: 'backup_frequency_days', value: "7" }
 ];
 
 class LocalDB {
@@ -90,10 +92,12 @@ class LocalDB {
     }
   }
 
-  private saveToStorage() {
+  private saveToStorage(triggerSync: boolean = true) {
     localStorage.setItem('library_db', JSON.stringify(this.data));
-    // Trigger a sync to Drive if connected
-    window.dispatchEvent(new CustomEvent('library_db_updated'));
+    if (triggerSync) {
+      // Trigger a sync to Drive if connected
+      window.dispatchEvent(new CustomEvent('library_db_updated'));
+    }
   }
 
   // --- Books ---
@@ -155,20 +159,20 @@ class LocalDB {
   // --- Settings ---
   getSettings() { return this.data.settings; }
   getSetting(key: string) { return this.data.settings.find(s => s.key === key)?.value; }
-  updateSetting(key: string, value: string) {
+  updateSetting(key: string, value: string, triggerSync: boolean = true) {
     const index = this.data.settings.findIndex(s => s.key === key);
     if (index !== -1) {
       this.data.settings[index].value = value;
     } else {
       this.data.settings.push({ key, value });
     }
-    this.saveToStorage();
+    this.saveToStorage(triggerSync);
   }
 
   // --- Full DB Replace (for Drive Sync) ---
   replaceDatabase(newData: Database) {
     this.data = newData;
-    this.saveToStorage();
+    this.saveToStorage(false); // Do not trigger sync when replacing from remote
   }
   
   getDatabase() {
