@@ -181,7 +181,6 @@ export async function downloadFromDrive() {
       if (remoteData && remoteData.books) {
         db.replaceDatabase(remoteData);
         console.log('Downloaded database from Google Apps Script');
-        window.location.reload();
       }
       return;
     } catch (err) {
@@ -206,7 +205,6 @@ export async function downloadFromDrive() {
       if (remoteData && remoteData.books) {
         db.replaceDatabase(remoteData);
         console.log('Downloaded database from Google Drive');
-        window.location.reload(); // Reload to reflect changes
       }
     }
   } catch (err) {
