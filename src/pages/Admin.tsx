@@ -370,7 +370,7 @@ export default function Admin() {
   };
 
   const handleDriveBackup = async () => {
-    if (!confirm('This will overwrite the existing "library_backup.json" in your Google Drive. Continue?')) return;
+    if (!confirm('This will overwrite the existing "library_db.json" in your Google Drive. Continue?')) return;
     
     setLoading(true);
     try {
@@ -387,6 +387,32 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDatedBackup = async () => {
+    setLoading(true);
+    
+    const handleSuccess = () => {
+      alert('Dated backup created successfully!');
+      fetchSettings();
+      cleanup();
+    };
+    
+    const handleError = () => {
+      alert('Failed to create dated backup.');
+      cleanup();
+    };
+    
+    const cleanup = () => {
+      setLoading(false);
+      window.removeEventListener('dated_backup_success', handleSuccess);
+      window.removeEventListener('dated_backup_error', handleError);
+    };
+    
+    window.addEventListener('dated_backup_success', handleSuccess);
+    window.addEventListener('dated_backup_error', handleError);
+    
+    window.dispatchEvent(new CustomEvent('force_dated_backup'));
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -1479,14 +1505,24 @@ export default function Admin() {
                           </div>
                         </div>
                       )}
-                      <button 
-                        onClick={handleDriveBackup}
-                        disabled={loading}
-                        className="w-full py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        {loading ? 'Backing up...' : 'Backup Now'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={handleDriveBackup}
+                          disabled={loading}
+                          className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                          {loading ? 'Backing up...' : 'Sync Now'}
+                        </button>
+                        <button 
+                          onClick={handleDatedBackup}
+                          disabled={loading}
+                          className="flex-1 py-3 bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Database className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                          Dated Backup
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button 
