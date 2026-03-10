@@ -1,6 +1,6 @@
 import { db } from './db';
 
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive';
 const FILE_NAME = 'library_db.json';
 
 let tokenClient: any;
@@ -48,6 +48,20 @@ export async function initDriveSync() {
   window.addEventListener('force_drive_download', () => {
     downloadFromDrive();
   });
+
+  window.addEventListener('force_dated_backup', () => {
+    if (accessToken) {
+      createDatedBackup().then(success => {
+        if (success) {
+          window.dispatchEvent(new CustomEvent('dated_backup_success'));
+        } else {
+          window.dispatchEvent(new CustomEvent('dated_backup_error'));
+        }
+      });
+    } else {
+      connectGoogleDrive();
+    }
+  });
 }
 
 export function connectGoogleDrive() {
@@ -80,6 +94,45 @@ export function disconnectGoogleDrive() {
   alert('Disconnected from Google Drive.');
 }
 
+export async function createDatedBackup() {
+  if (!accessToken) return;
+  
+  try {
+    const folderId = db.getSetting('google_drive_folder_id');
+    const localData = db.getDatabase();
+    const localJson = JSON.stringify(localData);
+    
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    const backupFileName = `library_db_backup_${dateStr}_${timeStr}.json`;
+    
+    const backupMetadata: any = {
+      name: backupFileName,
+      mimeType: 'application/json'
+    };
+    if (folderId) {
+      backupMetadata.parents = [folderId];
+    }
+
+    const backupForm = new FormData();
+    backupForm.append('metadata', new Blob([JSON.stringify(backupMetadata)], { type: 'application/json' }));
+    backupForm.append('file', new Blob([localJson], { type: 'application/json' }));
+
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: backupForm
+    });
+    console.log(`Created manual dated backup: ${backupFileName}`);
+    db.updateSetting('last_weekly_backup', now.toISOString(), false); // Reset weekly timer
+    return true;
+  } catch (err) {
+    console.error('Manual backup error:', err);
+    return false;
+  }
+}
+
 let syncTimeout: any;
 function debounceSync() {
   clearTimeout(syncTimeout);
@@ -103,7 +156,7 @@ async function syncWithDrive() {
         }
       });
       console.log('Synced to Google Drive via Apps Script');
-      db.updateSetting('last_drive_backup', new Date().toISOString());
+      db.updateSetting('last_drive_backup', new Date().toISOString(), false);
       return;
     } catch (err) {
       console.error('Apps Script sync error:', err);
@@ -113,15 +166,21 @@ async function syncWithDrive() {
   if (!accessToken) return;
 
   try {
+    const folderId = db.getSetting('google_drive_folder_id');
+    let query = `name='${FILE_NAME}' and trashed=false`;
+    if (folderId) {
+      query += ` and '${folderId}' in parents`;
+    }
+
     // 1. Find the file
-    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}' and trashed=false&spaces=drive`, {
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
     if (!searchRes.ok) {
-      if (searchRes.status === 401) {
+      if (searchRes.status === 401 || searchRes.status === 403) {
         accessToken = null;
-        console.warn('Drive token expired');
+        console.warn('Drive token expired or lacks permissions');
         return;
       }
       throw new Error('Failed to search Drive');
@@ -148,10 +207,13 @@ async function syncWithDrive() {
       console.log('Synced to Google Drive (Updated)');
     } else {
       // Create new file
-      const metadata = {
+      const metadata: any = {
         name: FILE_NAME,
         mimeType: 'application/json'
       };
+      if (folderId) {
+        metadata.parents = [folderId];
+      }
 
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -165,7 +227,49 @@ async function syncWithDrive() {
       console.log('Synced to Google Drive (Created)');
     }
     
-    db.updateSetting('last_drive_backup', new Date().toISOString());
+    db.updateSetting('last_drive_backup', new Date().toISOString(), false);
+
+    // Weekly Backup Logic
+    const backupFreqDays = parseInt(db.getSetting('backup_frequency_days') || '7');
+    if (!isNaN(backupFreqDays) && backupFreqDays > 0) {
+      const lastWeeklyBackup = db.getSetting('last_weekly_backup');
+      const now = new Date();
+      let shouldBackup = false;
+
+      if (!lastWeeklyBackup) {
+        shouldBackup = true;
+      } else {
+        const daysSince = (now.getTime() - new Date(lastWeeklyBackup).getTime()) / (1000 * 3600 * 24);
+        if (daysSince >= backupFreqDays) {
+          shouldBackup = true;
+        }
+      }
+
+      if (shouldBackup) {
+        const dateStr = now.toISOString().split('T')[0];
+        const backupFileName = `library_db_backup_${dateStr}.json`;
+        
+        const backupMetadata: any = {
+          name: backupFileName,
+          mimeType: 'application/json'
+        };
+        if (folderId) {
+          backupMetadata.parents = [folderId];
+        }
+
+        const backupForm = new FormData();
+        backupForm.append('metadata', new Blob([JSON.stringify(backupMetadata)], { type: 'application/json' }));
+        backupForm.append('file', new Blob([localJson], { type: 'application/json' }));
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: backupForm
+        });
+        console.log(`Created weekly backup: ${backupFileName}`);
+        db.updateSetting('last_weekly_backup', now.toISOString(), false);
+      }
+    }
   } catch (err) {
     console.error('Drive sync error:', err);
   }
@@ -191,9 +295,25 @@ export async function downloadFromDrive() {
   if (!accessToken) return;
 
   try {
-    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}' and trashed=false&spaces=drive`, {
+    const folderId = db.getSetting('google_drive_folder_id');
+    let query = `name='${FILE_NAME}' and trashed=false`;
+    if (folderId) {
+      query += ` and '${folderId}' in parents`;
+    }
+
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+    
+    if (!searchRes.ok) {
+      if (searchRes.status === 401 || searchRes.status === 403) {
+        accessToken = null;
+        console.warn('Drive token expired or lacks permissions');
+        return;
+      }
+      throw new Error('Failed to search Drive');
+    }
+
     const searchData = await searchRes.json();
     const file = searchData.files?.[0];
 
