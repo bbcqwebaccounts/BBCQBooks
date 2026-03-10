@@ -367,23 +367,6 @@ export default function Admin() {
     }
   };
 
-  const handleSyncDirectory = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/members/sync', { method: 'POST' });
-      if (res.ok) {
-        alert('Directory synced successfully!');
-        fetchMembers();
-      } else {
-        alert('Failed to sync directory. Ensure Google Account is connected.');
-      }
-    } catch (err) {
-      alert('An error occurred during sync');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const handleDriveBackup = async () => {
     if (!confirm('This will overwrite the existing "library_backup.json" in your Google Drive. Continue?')) return;
     
@@ -544,43 +527,59 @@ export default function Admin() {
     setAddMessage({ type: 'info', text: 'Searching for book details...' });
 
     try {
-      const res = await fetch(`/api/fetch-book/${clean}`);
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${clean}`);
       
       if (res.ok) {
         const data = await res.json();
+        const item = data.items?.[0]?.volumeInfo;
         
-        // Update UI with API data immediately
-        const mergedData = {
-          ...data,
-          title: data.title || fallbackData?.title || '',
-          author: data.author || fallbackData?.author || '',
-          description: data.description || fallbackData?.description || '',
-          cover_url: data.cover_url || fallbackData?.cover_url || '',
-          category: data.category || fallbackData?.category || '',
-        };
-        
-        setTitle(mergedData.title);
-        setAuthor(mergedData.author);
-        setDescription(mergedData.description);
-        setCoverUrl(mergedData.cover_url);
-        setCategory(mergedData.category);
-        
-        setAddMessage({ type: 'info', text: 'Fetching additional details with AI...' });
-        
-        // Augment with AI only if data is missing
-        const augmentedData = await augmentBookDataWithAI(clean, mergedData);
-        
-        // Update UI with AI data, using a functional update to maintain previous state if AI returns nothing
-        setTitle(prev => augmentedData.title || prev);
-        setAuthor(prev => augmentedData.author || prev);
-        setDescription(prev => augmentedData.description || prev);
-        setCoverUrl(prev => augmentedData.cover_url || prev);
-        setCategory(prev => augmentedData.category || prev);
-        
-        lastSuccessfulIsbn.current = clean;
-        setAddMessage({ type: 'success', text: 'Book details found!' });
+        if (item) {
+          const bookData = {
+            title: item.title || '',
+            author: item.authors?.join(', ') || '',
+            description: item.description || '',
+            cover_url: item.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
+            category: item.categories?.join(', ') || ''
+          };
+
+          // Update UI with API data immediately
+          const mergedData = {
+            ...bookData,
+            title: bookData.title || fallbackData?.title || '',
+            author: bookData.author || fallbackData?.author || '',
+            description: bookData.description || fallbackData?.description || '',
+            cover_url: bookData.cover_url || fallbackData?.cover_url || '',
+            category: bookData.category || fallbackData?.category || '',
+          };
+          
+          setTitle(mergedData.title);
+          setAuthor(mergedData.author);
+          setDescription(mergedData.description);
+          setCoverUrl(mergedData.cover_url);
+          setCategory(mergedData.category);
+          
+          setAddMessage({ type: 'info', text: 'Fetching additional details with AI...' });
+          
+          // Augment with AI only if data is missing
+          const augmentedData = await augmentBookDataWithAI(clean, mergedData);
+          
+          // Update UI with AI data, using a functional update to maintain previous state if AI returns nothing
+          setTitle(prev => augmentedData.title || prev);
+          setAuthor(prev => augmentedData.author || prev);
+          setDescription(prev => augmentedData.description || prev);
+          setCoverUrl(prev => augmentedData.cover_url || prev);
+          setCategory(prev => augmentedData.category || prev);
+          
+          lastSuccessfulIsbn.current = clean;
+          setAddMessage({ type: 'success', text: 'Book details found!' });
+        } else {
+          throw new Error('Not found');
+        }
       } else {
-        if (fallbackData && (fallbackData.title || fallbackData.author)) {
+        throw new Error('API Error');
+      }
+    } catch (err) {
+      if (fallbackData && (fallbackData.title || fallbackData.author)) {
           setTitle(fallbackData.title || '');
           setAuthor(fallbackData.author || '');
           setDescription(fallbackData.description || '');
@@ -598,11 +597,6 @@ export default function Admin() {
              setCoverUrl('');
           }
         }
-      }
-
-    } catch (err) {
-      console.error('Error fetching book details', err);
-      setAddMessage({ type: 'error', text: 'Network error while fetching book details.' });
     } finally {
       setIsSearching(false);
     }
@@ -1534,23 +1528,16 @@ export default function Admin() {
             <div className="mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h4 className="font-bold text-slate-900 mb-1">Google Sheets Connection</h4>
+                  <h4 className="font-bold text-slate-900 mb-1">Google Drive Sync</h4>
                   <p className="text-sm text-slate-500">
                     {googleConnected 
                       ? "Connected to your Google Account." 
-                      : "Connect your account to allow the app to write to your Google Sheet."}
+                      : "Connect your account to sync your library database to Google Drive."}
                   </p>
+                  <p className="text-xs text-slate-400 mt-1">Note: You must set your <strong>google_client_id</strong> below first.</p>
                 </div>
                 {googleConnected ? (
                   <div className="flex items-center gap-4">
-                    <button 
-                      onClick={handleSyncDirectory}
-                      disabled={syncing}
-                      className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-colors shadow-sm disabled:opacity-50"
-                    >
-                      {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                      Sync Directory
-                    </button>
                     <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold">
                       <Check className="w-4 h-4" />
                       Connected
