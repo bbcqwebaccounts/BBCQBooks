@@ -38,7 +38,11 @@ export async function initDriveSync() {
   });
 
   window.addEventListener('force_drive_sync', () => {
-    syncWithDrive();
+    if (accessToken) {
+      syncWithDrive();
+    } else {
+      connectGoogleDrive();
+    }
   });
 
   window.addEventListener('force_drive_download', () => {
