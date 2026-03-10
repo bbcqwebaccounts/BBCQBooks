@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
+import { connectGoogleDrive, disconnectGoogleDrive } from '../lib/drive-sync';
 // @ts-ignore
 import Barcode from 'react-barcode';
 
@@ -341,7 +342,7 @@ export default function Admin() {
 
   const handleConnectGoogle = async () => {
     try {
-      window.dispatchEvent(new CustomEvent('force_drive_sync'));
+      connectGoogleDrive();
       setTimeout(() => fetchSettings(), 3000);
     } catch (err) {
       alert('Failed to start Google connection');
@@ -351,6 +352,7 @@ export default function Admin() {
   const handleDisconnectGoogle = async () => {
     if (!confirm('Are you sure you want to disconnect your Google Account? This will stop automated backups and directory syncing.')) return;
     try {
+      disconnectGoogleDrive();
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
