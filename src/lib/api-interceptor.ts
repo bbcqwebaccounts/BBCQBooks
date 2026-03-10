@@ -259,16 +259,56 @@ Object.defineProperty(window, 'fetch', {
       const currentlyBorrowed = loans.filter(l => !l.return_date).length;
       const overdue = loans.filter(l => !l.return_date && new Date(l.due_date) < new Date()).length;
       
+      // Calculate top category
+      const categoryCounts: Record<string, number> = {};
+      loans.forEach(l => {
+        const book = books.find(b => b.id === l.book_id);
+        if (book && book.category) {
+          categoryCounts[book.category] = (categoryCounts[book.category] || 0) + 1;
+        }
+      });
+      const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0] || ['None', 0];
+
+      // Calculate top borrower
+      const borrowerCounts: Record<string, number> = {};
+      loans.forEach(l => {
+        borrowerCounts[l.user_name] = (borrowerCounts[l.user_name] || 0) + 1;
+      });
+      const topBorrower = Object.entries(borrowerCounts).sort((a, b) => b[1] - a[1])[0] || ['None', 0];
+
+      // Calculate top book
+      const bookCounts: Record<number, number> = {};
+      loans.forEach(l => {
+        bookCounts[l.book_id] = (bookCounts[l.book_id] || 0) + 1;
+      });
+      const topBookId = parseInt(Object.entries(bookCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '0');
+      const topBookTitle = books.find(b => b.id === topBookId)?.title || 'None';
+      const topBookCount = bookCounts[topBookId] || 0;
+
+      // Borrows over time (last N days)
+      const borrowsOverTime = [];
+      const now = new Date();
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const count = loans.filter(l => l.borrow_date.startsWith(dateStr)).length;
+        borrowsOverTime.push({ date: dateStr, count });
+      }
+
+      // Category stats
+      const categoryStats = Object.entries(categoryCounts).map(([name, value]) => ({ name, value }));
+
       return jsonResponse({
         stats: {
           currentlyBorrowed,
           overdue,
-          topCategory: { name: 'Fiction', count: 10 },
-          topBorrower: { name: 'John Doe', count: 5 },
-          topBook: { title: '1984', count: 3 }
+          topCategory: { name: topCategory[0], count: topCategory[1] },
+          topBorrower: { name: topBorrower[0], count: topBorrower[1] },
+          topBook: { title: topBookTitle, count: topBookCount }
         },
-        borrowsOverTime: [],
-        categoryStats: []
+        borrowsOverTime,
+        categoryStats
       });
     }
 
