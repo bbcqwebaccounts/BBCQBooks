@@ -251,9 +251,15 @@ export default function Admin() {
     try {
       const res = await fetch(`/api/admin/analytics?days=${days}`);
       const data = await res.json();
-      setAnalytics(data);
+      if (data && data.stats) {
+        setAnalytics(data);
+      } else {
+        console.error("Expected analytics data, got:", data);
+        setAnalytics(null);
+      }
     } catch (err) {
       console.error('Failed to fetch analytics', err);
+      setAnalytics(null);
     }
   };
 
@@ -267,9 +273,15 @@ export default function Admin() {
     try {
       const res = await fetch('/api/messages');
       const data = await res.json();
-      setMessages(data);
+      if (Array.isArray(data)) {
+        setMessages(data);
+      } else {
+        console.error("Expected array of messages, got:", data);
+        setMessages([]);
+      }
     } catch (err) {
       console.error('Failed to fetch messages', err);
+      setMessages([]);
     }
   };
 
@@ -277,9 +289,15 @@ export default function Admin() {
     try {
       const res = await fetch('/api/members/all');
       const data = await res.json();
-      setMembers(data);
+      if (Array.isArray(data)) {
+        setMembers(data);
+      } else {
+        console.error("Expected array of members, got:", data);
+        setMembers([]);
+      }
     } catch (err) {
       console.error('Failed to fetch members', err);
+      setMembers([]);
     }
   };
 
@@ -287,20 +305,27 @@ export default function Admin() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      setSettings(data.settings);
-      setGoogleConnected(data.googleConnected);
-      setRefreshToken(data.refreshToken);
+      
+      if (data && Array.isArray(data.settings)) {
+        setSettings(data.settings);
+        setGoogleConnected(data.googleConnected);
+        setRefreshToken(data.refreshToken);
 
-      // Check last backup date
-      const lastBackup = data.settings.find((s: any) => s.key === 'last_drive_backup')?.value;
-      if (!lastBackup) {
-        setShowBackupWarning(true);
+        // Check last backup date
+        const lastBackup = data.settings.find((s: any) => s.key === 'last_drive_backup')?.value;
+        if (!lastBackup) {
+          setShowBackupWarning(true);
+        } else {
+          const daysSinceBackup = (new Date().getTime() - new Date(lastBackup).getTime()) / (1000 * 3600 * 24);
+          setShowBackupWarning(daysSinceBackup > 30);
+        }
       } else {
-        const daysSinceBackup = (new Date().getTime() - new Date(lastBackup).getTime()) / (1000 * 3600 * 24);
-        setShowBackupWarning(daysSinceBackup > 30);
+        console.error("Expected settings array, got:", data);
+        setSettings([]);
       }
     } catch (err) {
       console.error('Failed to fetch settings', err);
+      setSettings([]);
     }
   };
 
@@ -316,9 +341,8 @@ export default function Admin() {
 
   const handleConnectGoogle = async () => {
     try {
-      const res = await fetch('/api/auth/google/url');
-      const { url } = await res.json();
-      window.open(url, 'google_oauth', 'width=600,height=700');
+      window.dispatchEvent(new CustomEvent('force_drive_sync'));
+      setTimeout(() => fetchSettings(), 3000);
     } catch (err) {
       alert('Failed to start Google connection');
     }
@@ -327,7 +351,11 @@ export default function Admin() {
   const handleDisconnectGoogle = async () => {
     if (!confirm('Are you sure you want to disconnect your Google Account? This will stop automated backups and directory syncing.')) return;
     try {
-      const res = await fetch('/api/admin/google/disconnect', { method: 'POST' });
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: [{ key: 'google_oauth_tokens', value: '' }] })
+      });
       if (res.ok) {
         alert('Google Account disconnected successfully.');
         await fetchSettings();
@@ -401,9 +429,15 @@ export default function Admin() {
     try {
       const res = await fetch('/api/books');
       const data = await res.json();
-      setBooks(data);
+      if (Array.isArray(data)) {
+        setBooks(data);
+      } else {
+        console.error("Expected array of books, got:", data);
+        setBooks([]);
+      }
     } catch (err) {
       console.error('Failed to fetch books', err);
+      setBooks([]);
     }
   };
 
@@ -427,9 +461,15 @@ export default function Admin() {
     try {
       const res = await fetch('/api/loans');
       const data = await res.json();
-      setLoans(data);
+      if (Array.isArray(data)) {
+        setLoans(data);
+      } else {
+        console.error("Expected array of loans, got:", data);
+        setLoans([]);
+      }
     } catch (err) {
       console.error('Failed to fetch loans', err);
+      setLoans([]);
     }
   };
 
