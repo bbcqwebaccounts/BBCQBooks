@@ -1528,13 +1528,13 @@ export default function Admin() {
             <div className="mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h4 className="font-bold text-slate-900 mb-1">Google Drive Sync</h4>
+                  <h4 className="font-bold text-slate-900 mb-1">Google Drive Sync (Admin Only)</h4>
                   <p className="text-sm text-slate-500">
                     {googleConnected 
                       ? "Connected to your Google Account." 
                       : "Connect your account to sync your library database to Google Drive."}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">Note: You must set your <strong>google_client_id</strong> below first.</p>
+                  <p className="text-xs text-slate-400 mt-1">Note: You must set your <strong>google_client_id</strong> below first. This method only syncs when YOU are logged in.</p>
                 </div>
                 {googleConnected ? (
                   <div className="flex items-center gap-4">
@@ -1557,6 +1557,20 @@ export default function Admin() {
                     Connect Account
                   </button>
                 )}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <h4 className="font-bold text-slate-900 mb-2">Persistent Public Sync (Recommended)</h4>
+                <p className="text-sm text-slate-600 mb-3">
+                  To allow public users to load the library and borrow books without logging in, use a Google Apps Script.
+                </p>
+                <ol className="text-xs text-slate-500 list-decimal pl-4 space-y-1 mb-4">
+                  <li>Go to <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">script.google.com</a> and create a new project.</li>
+                  <li>Paste the provided script code (ask the AI for the code).</li>
+                  <li>Click <strong>Deploy &gt; New deployment</strong>. Select type <strong>Web app</strong>.</li>
+                  <li>Execute as: <strong>Me</strong>. Who has access: <strong>Anyone</strong>.</li>
+                  <li>Copy the Web app URL and paste it into the <strong>google_apps_script_url</strong> setting below.</li>
+                </ol>
               </div>
             </div>
             

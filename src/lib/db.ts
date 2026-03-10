@@ -55,7 +55,8 @@ const defaultSettings: Setting[] = [
   { key: 'sms_overdue_template', value: "Hi {name}, '{title}' is overdue. Please return it ASAP." },
   { key: 'ADMIN_PASSWORD', value: "bbcqbooks" },
   { key: 'max_borrow_weeks', value: "4" },
-  { key: 'google_client_id', value: "" }
+  { key: 'google_client_id', value: "" },
+  { key: 'google_apps_script_url', value: "" }
 ];
 
 class LocalDB {

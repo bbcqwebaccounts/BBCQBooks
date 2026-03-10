@@ -7,32 +7,6 @@ let tokenClient: any;
 let accessToken: string | null = null;
 
 export async function initDriveSync() {
-  const clientId = db.getSetting('google_client_id');
-  if (!clientId) {
-    console.warn('Google Client ID not set. Drive sync disabled.');
-    return;
-  }
-
-  // Load gapi client
-  await new Promise<void>((resolve) => {
-    (window as any).gapi.load('client', () => {
-      (window as any).gapi.client.init({}).then(resolve);
-    });
-  });
-
-  // Initialize token client
-  tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: SCOPES,
-    callback: (tokenResponse: any) => {
-      if (tokenResponse && tokenResponse.access_token) {
-        accessToken = tokenResponse.access_token;
-        db.updateSetting('google_oauth_tokens', JSON.stringify(tokenResponse));
-        syncWithDrive();
-      }
-    },
-  });
-
   // Check if we have a saved token
   const savedTokenStr = db.getSetting('google_oauth_tokens');
   if (savedTokenStr) {
@@ -40,18 +14,18 @@ export async function initDriveSync() {
       const savedToken = JSON.parse(savedTokenStr);
       if (savedToken.access_token) {
         accessToken = savedToken.access_token;
-        
-        // On initial load, try to download from Drive first if we haven't already in this session
-        if (!sessionStorage.getItem('has_synced_from_drive')) {
-          sessionStorage.setItem('has_synced_from_drive', 'true');
-          downloadFromDrive().catch(() => {
-            accessToken = null;
-          });
-        }
       }
     } catch (e) {
       console.error('Failed to parse saved token', e);
     }
+  }
+
+  // On initial load, try to download from Drive first if we haven't already in this session
+  if (!sessionStorage.getItem('has_synced_from_drive')) {
+    sessionStorage.setItem('has_synced_from_drive', 'true');
+    downloadFromDrive().catch(() => {
+      accessToken = null;
+    });
   }
 
   // Listen for local DB updates to trigger sync
@@ -60,23 +34,15 @@ export async function initDriveSync() {
     if (!savedTokenStr) {
       accessToken = null;
     }
-    if (accessToken) {
-      debounceSync();
-    }
+    debounceSync();
   });
 
   window.addEventListener('force_drive_sync', () => {
-    if (accessToken) {
-      syncWithDrive();
-    } else {
-      connectGoogleDrive();
-    }
+    syncWithDrive();
   });
 
   window.addEventListener('force_drive_download', () => {
-    if (accessToken) {
-      downloadFromDrive();
-    }
+    downloadFromDrive();
   });
 }
 
@@ -86,13 +52,22 @@ export function connectGoogleDrive() {
     alert('Please set your Google Client ID in Settings first.');
     return;
   }
-  if (tokenClient) {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  } else {
-    initDriveSync().then(() => {
-      if (tokenClient) tokenClient.requestAccessToken({ prompt: 'consent' });
+  
+  if (!tokenClient) {
+    tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: SCOPES,
+      callback: (tokenResponse: any) => {
+        if (tokenResponse && tokenResponse.access_token) {
+          accessToken = tokenResponse.access_token;
+          db.updateSetting('google_oauth_tokens', JSON.stringify(tokenResponse));
+          syncWithDrive();
+        }
+      },
     });
   }
+  
+  tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
 export function disconnectGoogleDrive() {
@@ -110,6 +85,27 @@ function debounceSync() {
 }
 
 async function syncWithDrive() {
+  const scriptUrl = db.getSetting('google_apps_script_url');
+  const localData = db.getDatabase();
+  const localJson = JSON.stringify(localData);
+
+  if (scriptUrl) {
+    try {
+      await fetch(`${scriptUrl}?action=write`, {
+        method: 'POST',
+        body: localJson,
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        }
+      });
+      console.log('Synced to Google Drive via Apps Script');
+      db.updateSetting('last_drive_backup', new Date().toISOString());
+      return;
+    } catch (err) {
+      console.error('Apps Script sync error:', err);
+    }
+  }
+
   if (!accessToken) return;
 
   try {
@@ -130,16 +126,7 @@ async function syncWithDrive() {
     const searchData = await searchRes.json();
     const file = searchData.files?.[0];
 
-    const localData = db.getDatabase();
-    const localJson = JSON.stringify(localData);
-
     if (file) {
-      // File exists, check if we need to download or upload
-      // For simplicity in a client-side app, we will assume local is always newer if we just made a change.
-      // But on initial load, we should download.
-      // Let's just upload for now to ensure data is saved.
-      // Ideally, we'd compare timestamps.
-      
       const metadata = {
         name: FILE_NAME,
         mimeType: 'application/json'
@@ -181,6 +168,23 @@ async function syncWithDrive() {
 }
 
 export async function downloadFromDrive() {
+  const scriptUrl = db.getSetting('google_apps_script_url');
+
+  if (scriptUrl) {
+    try {
+      const res = await fetch(`${scriptUrl}?action=read`);
+      const remoteData = await res.json();
+      if (remoteData && remoteData.books) {
+        db.replaceDatabase(remoteData);
+        console.log('Downloaded database from Google Apps Script');
+        window.location.reload();
+      }
+      return;
+    } catch (err) {
+      console.error('Apps Script download error:', err);
+    }
+  }
+
   if (!accessToken) return;
 
   try {
