@@ -68,7 +68,7 @@ export default function ExtendLoan() {
           const results = data.results || [];
           if (results.length > 0) {
             // 1. Cancel old reminders
-            const batchIds = results.map((loan: any) => loan.id.toString());
+            const batchIds = results.map((loan: any) => `Library-${loan.id}`);
             await fetch('/api/messages/cancel-by-batch', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -92,7 +92,7 @@ export default function ExtendLoan() {
                     scheduledTime: loan.sms_scheduled_time,
                     message: loan.sms_message,
                     status: 'Queued',
-                    batchId: loan.id.toString()
+                    batchId: `Library-${loan.id}`
                   })
                 });
               }

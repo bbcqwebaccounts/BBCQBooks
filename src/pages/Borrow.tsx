@@ -155,7 +155,7 @@ export default function Borrow() {
                   scheduledTime: loan.sms_scheduled_time,
                   message: loan.sms_message,
                   status: 'Queued',
-                  batchId: loan.id.toString()
+                  batchId: `Library-${loan.id}`
                 })
               });
             } catch (err) {

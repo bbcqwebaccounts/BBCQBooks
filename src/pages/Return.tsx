@@ -131,7 +131,7 @@ export default function Return() {
       if (res.ok) {
         // Cancel SMS reminders for returned loans
         try {
-          const batchIds = data.map((loan: any) => loan.id.toString());
+          const batchIds = data.map((loan: any) => `Library-${loan.id}`);
           if (batchIds.length > 0) {
             await fetch('/api/messages/cancel-by-batch', {
               method: 'POST',

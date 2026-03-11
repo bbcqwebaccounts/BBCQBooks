@@ -69,9 +69,7 @@ Object.defineProperty(window, 'fetch', {
           }));
 
           const libraryMessages = messages.filter((msg: any) => 
-            msg.message.toLowerCase().includes('library') || 
-            msg.message.toLowerCase().includes('bbcqbooks') ||
-            msg.message.toLowerCase().includes('book')
+            msg.batchId && msg.batchId.startsWith('Library')
           );
           return jsonResponse(libraryMessages);
         }
@@ -422,7 +420,7 @@ Object.defineProperty(window, 'fetch', {
         fetch('/api/messages/cancel-by-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batchIds: [id.toString()] })
+          body: JSON.stringify({ batchIds: [`Library-${id}`] })
         }).catch(err => console.error('Failed to cancel SMS reminder:', err));
       } catch (e) {
         // Ignore errors

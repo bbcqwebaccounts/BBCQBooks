@@ -39,7 +39,8 @@ import {
   Camera,
   RefreshCw,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  CheckCircle
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
@@ -92,6 +93,7 @@ export default function Admin() {
   const [settings, setSettings] = useState<{ key: string, value: string }[]>([]);
   const [showReturnedLoans, setShowReturnedLoans] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
@@ -276,16 +278,19 @@ export default function Admin() {
 
   const fetchMessages = async () => {
     try {
+      setMessagesError(null);
       const res = await fetch('/api/messages');
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (res.ok && Array.isArray(data)) {
         setMessages(data);
       } else {
         console.error("Expected array of messages, got:", data);
+        setMessagesError(data.error || "Failed to load messages");
         setMessages([]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch messages', err);
+      setMessagesError(err.message || "Failed to load messages");
       setMessages([]);
     }
   };
@@ -1291,13 +1296,26 @@ export default function Admin() {
               <h3 className="text-xl font-bold text-slate-900">Scheduled Messages</h3>
               <p className="text-slate-500 text-sm">View and manage automated SMS reminders</p>
             </div>
-            <button 
-              onClick={fetchMessages}
-              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
+            <div className="flex items-center gap-4">
+              {messagesError ? (
+                <div className="flex items-center gap-2 text-rose-600 text-sm font-medium bg-rose-50 px-3 py-1.5 rounded-lg" title={messagesError}>
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Not Synced</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium bg-emerald-50 px-3 py-1.5 rounded-lg">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Connected & Synced</span>
+                </div>
+              )}
+              <button 
+                onClick={fetchMessages}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
