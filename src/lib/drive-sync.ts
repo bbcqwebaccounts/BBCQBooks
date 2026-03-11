@@ -35,9 +35,11 @@ export async function initDriveSync() {
   // On initial load, try to download from Drive first if we haven't already in this session
   if (!sessionStorage.getItem('has_synced_from_drive')) {
     sessionStorage.setItem('has_synced_from_drive', 'true');
-    downloadFromDrive().catch(() => {
+    try {
+      await downloadFromDrive();
+    } catch (e) {
       accessToken = null;
-    });
+    }
   }
 
   // Listen for local DB updates to trigger sync

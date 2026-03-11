@@ -64,8 +64,15 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [needsApiKey, setNeedsApiKey] = React.useState(false);
+  const [dbVersion, setDbVersion] = React.useState(0);
 
   React.useEffect(() => {
+    const handleDbReplaced = () => {
+      console.log("Database replaced from remote, forcing re-render");
+      setDbVersion(v => v + 1);
+    };
+    window.addEventListener('library_db_replaced', handleDbReplaced);
+
     async function checkApiKey() {
       if (typeof window !== 'undefined' && (window as any).aistudio) {
         const hasKey = await (window as any).aistudio.hasSelectedApiKey();
@@ -79,12 +86,9 @@ export default function App() {
     }
     checkApiKey();
 
-    // Trigger a sync from Google Drive on page load
-    // This ensures the app loads the latest backup without requiring admin login
-    fetch('/api/sync-from-drive', { method: 'POST' })
-      .then(res => res.json())
-      .then(data => console.log('Sync on load:', data))
-      .catch(err => console.error('Failed to sync on load:', err));
+    return () => {
+      window.removeEventListener('library_db_replaced', handleDbReplaced);
+    };
   }, []);
 
   const handleSelectKey = async () => {
@@ -123,7 +127,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes>
+        <Routes key={dbVersion}>
           <Route path="/" element={<Home />} />
           <Route path="/borrow" element={<Borrow />} />
           <Route path="/return" element={<Return />} />

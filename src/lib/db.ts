@@ -189,6 +189,7 @@ class LocalDB {
   replaceDatabase(newData: Database) {
     this.data = newData;
     this.saveToStorage(false); // Do not trigger sync when replacing from remote
+    window.dispatchEvent(new CustomEvent('library_db_replaced'));
   }
   
   getDatabase() {
