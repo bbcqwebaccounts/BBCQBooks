@@ -30,8 +30,7 @@ export async function augmentBookDataWithAI(isbn: string, initialData: any) {
 
     prompt += `Please provide the following information: ${missingFields.join(', ')}. `;
     prompt += `For the description, generate a high-quality, readable summary based on the book's title and author. Ignore any existing low-quality or OCR-scanned text. `;
-    prompt += `For cover image, provide a high-quality URL, not a small thumbnail. `;
-    prompt += `If categories are requested, they MUST be official BISAC category names (e.g., "RELIGION / Christian Church / History"). NEVER return BISAC codes (e.g., "REL067000"). If you return a code, it will be rejected. `;
+    prompt += `For cover image, search for a high-quality, verified, working URL of the book cover. DO NOT return generic, placeholder, or broken links. If you cannot find a verified working URL, return null. `;
     prompt += `Return the result as JSON.`;
 
     const response = await ai.models.generateContent({
@@ -46,7 +45,7 @@ export async function augmentBookDataWithAI(isbn: string, initialData: any) {
             title: { type: Type.STRING },
             author: { type: Type.STRING },
             description: { type: Type.STRING },
-            cover_url: { type: Type.STRING },
+            cover_url: { type: Type.STRING, description: "A verified working URL of the book cover, or null if not found." },
             categories: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of BISAC category names." }
           }
         }
@@ -60,6 +59,19 @@ export async function augmentBookDataWithAI(isbn: string, initialData: any) {
       }
       try {
         const aiData = JSON.parse(response.text);
+        
+        // Guardrail: Verify if the image URL is valid
+        let verifiedCoverUrl = null;
+        if (aiData.cover_url) {
+          try {
+            const imgRes = await fetch(aiData.cover_url, { method: 'HEAD' });
+            if (imgRes.ok) {
+              verifiedCoverUrl = aiData.cover_url;
+            }
+          } catch (e) {
+            console.warn('Failed to verify cover image URL', e);
+          }
+        }
         
         const toTitleCase = (str: string) => {
           if (!str) return str;
@@ -80,7 +92,7 @@ export async function augmentBookDataWithAI(isbn: string, initialData: any) {
           title: toTitleCase(initialData.title || aiData.title),
           author: toTitleCase(initialData.author || aiData.author),
           description: aiData.description || initialData.description,
-          cover_url: initialData.cover_url || aiData.cover_url,
+          cover_url: verifiedCoverUrl || initialData.cover_url,
           category: initialData.category || (aiData.categories ? aiData.categories.join(', ') : null)
         };
       } catch (e) {
