@@ -92,6 +92,7 @@ export default function Admin() {
   const [members, setMembers] = useState<any[]>([]);
   const [settings, setSettings] = useState<{ key: string, value: string }[]>([]);
   const [showReturnedLoans, setShowReturnedLoans] = useState(false);
+  const [showSentMessages, setShowSentMessages] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -1297,6 +1298,15 @@ export default function Admin() {
               <p className="text-slate-500 text-sm">View and manage automated SMS reminders</p>
             </div>
             <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={showSentMessages}
+                  onChange={(e) => setShowSentMessages(e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Show Sent Messages
+              </label>
               {messagesError ? (
                 <div className="flex items-center gap-2 text-rose-600 text-sm font-medium bg-rose-50 px-3 py-1.5 rounded-lg" title={messagesError}>
                   <AlertCircle className="w-4 h-4" />
@@ -1347,19 +1357,19 @@ export default function Admin() {
                       </div>
                     </td>
                   </tr>
-                ) : messages.length === 0 ? (
+                ) : messages.filter(m => m.status === 'Queued' || (showSentMessages && m.status.startsWith('Sent'))).length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-500">No messages found.</td>
                   </tr>
                 ) : (
-                  getSortedData(messages, 'messages').map(msg => (
+                  getSortedData(messages.filter(m => m.status === 'Queued' || (showSentMessages && m.status.startsWith('Sent'))), 'messages').map(msg => (
                     <tr key={msg.rowIndex} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-sm font-medium text-slate-900 whitespace-nowrap">
                         {msg.scheduledTime}
                       </td>
                       <td className="p-4">
                         <p className="font-medium text-slate-900">{msg.firstName} {msg.surname}</p>
-                        <p className="text-xs text-slate-500">{msg.number}</p>
+                        <p className="text-xs text-slate-500">{msg.phone}</p>
                       </td>
                       <td className="p-4 text-sm text-slate-600 max-w-xs truncate" title={msg.message}>
                         {msg.message}
@@ -1367,7 +1377,7 @@ export default function Admin() {
                       <td className="p-4">
                         <span className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           msg.status === 'Queued' ? 'bg-amber-50 text-amber-700' : 
-                          msg.status === 'Sent' ? 'bg-emerald-50 text-emerald-700' : 
+                          msg.status.startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : 
                           'bg-slate-100 text-slate-600'
                         }`}>
                           {msg.status}
