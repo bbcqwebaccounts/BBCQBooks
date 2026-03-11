@@ -27,6 +27,20 @@ Object.defineProperty(window, 'fetch', {
       });
     };
 
+    const handleGoogleSheetsError = async (res: Response) => {
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error("Google Sheets API Error:", res.status, res.statusText, errBody);
+        if (res.status === 401) {
+          throw new Error("Google session expired. Please disconnect and reconnect your Google account in Settings.");
+        }
+        if (res.status === 403 || res.status === 404) {
+          throw new Error("Cannot access Google Sheet. Please check the Sheet ID in Settings and ensure your Google account has access.");
+        }
+        throw new Error(`Failed to fetch from Google Sheets: ${res.status} ${res.statusText}`);
+      }
+    };
+
     if (path.startsWith('/api/messages')) {
       const sheetId = db.getSetting('sms_google_sheet_id') || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
       const sheetTab = db.getSetting('sms_google_sheet_tab') || 'Log';
@@ -51,14 +65,7 @@ Object.defineProperty(window, 'fetch', {
           const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
-          if (!res.ok) {
-            const errBody = await res.text();
-            console.error("Google Sheets API Error:", res.status, res.statusText, errBody);
-            if (res.status === 403 || res.status === 404) {
-              throw new Error("Cannot access Google Sheet. Please check the Sheet ID in Settings and ensure your Google account has access.");
-            }
-            throw new Error(`Failed to fetch from Google Sheets: ${res.status} ${res.statusText}`);
-          }
+          await handleGoogleSheetsError(res);
           const data = await res.json();
           const rows = data.values || [];
           if (rows.length === 0) return jsonResponse([]);
@@ -97,7 +104,7 @@ Object.defineProperty(window, 'fetch', {
               values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
             })
           });
-          if (!res.ok) throw new Error('Failed to append to Google Sheets');
+          await handleGoogleSheetsError(res);
           return jsonResponse({ success: true });
         }
 
@@ -116,7 +123,7 @@ Object.defineProperty(window, 'fetch', {
               values: [[scheduledTime, message, status]]
             })
           });
-          if (!res.ok) throw new Error('Failed to update Google Sheets');
+          await handleGoogleSheetsError(res);
           return jsonResponse({ success: true });
         }
 
@@ -133,7 +140,7 @@ Object.defineProperty(window, 'fetch', {
               values: [['Cancelled']]
             })
           });
-          if (!res.ok) throw new Error('Failed to delete in Google Sheets');
+          await handleGoogleSheetsError(res);
           return jsonResponse({ success: true });
         }
 
@@ -145,7 +152,7 @@ Object.defineProperty(window, 'fetch', {
           const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
-          if (!getRes.ok) throw new Error('Failed to fetch from Google Sheets');
+          await handleGoogleSheetsError(getRes);
           const data = await getRes.json();
           const rows = data.values || [];
           
@@ -175,7 +182,7 @@ Object.defineProperty(window, 'fetch', {
                 data: dataToUpdate
               })
             });
-            if (!updateRes.ok) throw new Error('Failed to batch update Google Sheets');
+            await handleGoogleSheetsError(updateRes);
           }
           return jsonResponse({ success: true });
         }
