@@ -1726,6 +1726,16 @@ export default function Admin() {
                       The number of days <strong>before</strong> the due date to send the automated SMS reminder. For example, "2" means the reminder will be sent 2 days before the book is due.
                     </p>
                   )}
+                  {setting.key === 'sms_google_sheet_id' && (
+                    <p className="mt-2 text-[10px] text-slate-400">
+                      The ID of the Google Sheet where SMS messages are logged. You can find this in the URL of your Google Sheet.
+                    </p>
+                  )}
+                  {setting.key === 'sms_google_sheet_tab' && (
+                    <p className="mt-2 text-[10px] text-slate-400">
+                      The name of the tab in the Google Sheet where SMS messages are logged (e.g., "Log").
+                    </p>
+                  )}
                   {setting.key === 'max_borrow_weeks' && (
                     <p className="mt-2 text-[10px] text-slate-400">
                       The maximum number of weeks a book can be borrowed. Set to 0 or leave empty for unlimited.

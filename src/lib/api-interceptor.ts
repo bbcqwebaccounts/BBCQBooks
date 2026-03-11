@@ -12,8 +12,21 @@ Object.defineProperty(window, 'fetch', {
   value: async (input: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     
-    if (!urlStr.startsWith('/api/') || urlStr.startsWith('/api/drive/') || urlStr.startsWith('/api/messages')) {
+    if (!urlStr.startsWith('/api/') || urlStr.startsWith('/api/drive/')) {
       return originalFetch(input, init);
+    }
+
+    if (urlStr.startsWith('/api/messages')) {
+      const sheetId = db.getSetting('sms_google_sheet_id') || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+      const sheetTab = db.getSetting('sms_google_sheet_tab') || 'Log';
+      
+      const newInit = { ...init };
+      newInit.headers = {
+        ...newInit.headers,
+        'x-spreadsheet-id': sheetId,
+        'x-sheet-name': sheetTab
+      };
+      return originalFetch(input, newInit);
     }
 
     const url = new URL(urlStr, window.location.origin);

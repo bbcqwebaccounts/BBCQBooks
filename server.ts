@@ -222,18 +222,18 @@ app.post("/api/drive/backup", async (req, res) => {
   }
 });
 
-const SPREADSHEET_ID = '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
-const SHEET_NAME = 'Log';
-
 app.get("/api/messages", async (req, res) => {
   if (!sheetsClient) {
     return res.status(500).json({ error: "Google Sheets is not configured on the server." });
   }
 
+  const spreadsheetId = req.headers['x-spreadsheet-id'] as string || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+  const sheetName = req.headers['x-sheet-name'] as string || 'Log';
+
   try {
     const response = await sheetsClient.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:I`,
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A:I`,
     });
 
     const rows = response.data.values;
@@ -260,7 +260,8 @@ app.get("/api/messages", async (req, res) => {
     // Filter to only include library related messages
     const libraryMessages = messages.filter((msg: any) => 
       msg.message.toLowerCase().includes('library') || 
-      msg.message.toLowerCase().includes('bbcqbooks')
+      msg.message.toLowerCase().includes('bbcqbooks') ||
+      msg.message.toLowerCase().includes('book')
     );
 
     res.json(libraryMessages);
@@ -275,13 +276,16 @@ app.post("/api/messages", async (req, res) => {
     return res.status(500).json({ error: "Google Sheets is not configured on the server." });
   }
 
+  const spreadsheetId = req.headers['x-spreadsheet-id'] as string || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+  const sheetName = req.headers['x-sheet-name'] as string || 'Log';
+
   try {
     const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = req.body;
     const logTime = new Date().toLocaleString();
 
     await sheetsClient.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:I`,
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A:I`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
@@ -300,14 +304,17 @@ app.put("/api/messages/:rowIndex", async (req, res) => {
     return res.status(500).json({ error: "Google Sheets is not configured on the server." });
   }
 
+  const spreadsheetId = req.headers['x-spreadsheet-id'] as string || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+  const sheetName = req.headers['x-sheet-name'] as string || 'Log';
+
   try {
     const { rowIndex } = req.params;
     const { status } = req.body;
 
     // Update the status column (H)
     await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!H${rowIndex}`,
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!H${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[status]]
@@ -326,13 +333,16 @@ app.delete("/api/messages/:rowIndex", async (req, res) => {
     return res.status(500).json({ error: "Google Sheets is not configured on the server." });
   }
 
+  const spreadsheetId = req.headers['x-spreadsheet-id'] as string || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+  const sheetName = req.headers['x-sheet-name'] as string || 'Log';
+
   try {
     const { rowIndex } = req.params;
     
     // We can't easily delete a row without using batchUpdate, so we'll just mark it as Cancelled
     await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!H${rowIndex}`,
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!H${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [['Cancelled']]
@@ -351,6 +361,9 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
     return res.status(500).json({ error: "Google Sheets is not configured on the server." });
   }
 
+  const spreadsheetId = req.headers['x-spreadsheet-id'] as string || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+  const sheetName = req.headers['x-sheet-name'] as string || 'Log';
+
   try {
     const { batchIds } = req.body;
     if (!batchIds || !batchIds.length) {
@@ -358,8 +371,8 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
     }
 
     const response = await sheetsClient.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:I`,
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A:I`,
     });
 
     const rows = response.data.values;
@@ -375,7 +388,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
       
       if (batchIds.includes(batchId) && status === 'Queued') {
         updates.push({
-          range: `${SHEET_NAME}!H${i + 1}`,
+          range: `${sheetName}!H${i + 1}`,
           values: [['Cancelled']]
         });
       }
@@ -383,7 +396,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
 
     if (updates.length > 0) {
       await sheetsClient.spreadsheets.values.batchUpdate({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: spreadsheetId,
         requestBody: {
           valueInputOption: 'USER_ENTERED',
           data: updates
