@@ -163,7 +163,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
             }
           } else if (mode === 'identify') {
             const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-3.1-flash-preview',
               contents: {
                 parts: [
                   {
@@ -173,11 +173,12 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
                     }
                   },
                   {
-                    text: `Extract the book details from this cover image. Return a JSON object with title, author, description (generate a short summary based on the title/author if not visible), category (e.g., Fiction, Science, History), and isbn (if visible). Ensure the title and author are in Title Case, not ALL CAPS.`
+                    text: `Extract the book details from this cover image. Use Google Search to find the exact ISBN-13 for this specific edition if possible. Return a JSON object with title, author, description (generate a short summary based on the title/author if not visible), category (e.g., Fiction, Science, History), and isbn. Ensure the title, author, and category are in Title Case, not ALL CAPS.`
                   }
                 ]
               },
               config: {
+                tools: [{ googleSearch: {} }],
                 responseMimeType: 'application/json',
                 responseSchema: {
                   type: Type.OBJECT,
@@ -216,6 +217,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
 
               if (result.title) result.title = toTitleCase(result.title);
               if (result.author) result.author = toTitleCase(result.author);
+              if (result.category) result.category = toTitleCase(result.category);
               
             } catch (e) {
               if (e instanceof SyntaxError) {

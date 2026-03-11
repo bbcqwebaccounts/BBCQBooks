@@ -483,7 +483,7 @@ export default function Home() {
               <div className="overflow-y-auto flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 md:p-8">
                   <div className="md:col-span-2">
-                    <div className="aspect-[3/4] bg-slate-50 rounded-2xl overflow-hidden shadow-md border border-slate-100 flex items-center justify-center">
+                    <div className="aspect-[3/4] bg-slate-50 rounded-2xl overflow-hidden shadow-md border border-slate-100 flex items-center justify-center relative">
                       {selectedBook.cover_url ? (
                         <img 
                           src={selectedBook.cover_url} 
@@ -493,6 +493,11 @@ export default function Home() {
                         />
                       ) : (
                         <BookIcon className="w-20 h-20 text-slate-200" />
+                      )}
+                      {selectedBook.is_dvd && (
+                        <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
+                          DVD
+                        </div>
                       )}
                     </div>
                   </div>

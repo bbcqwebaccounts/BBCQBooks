@@ -103,13 +103,16 @@ export async function augmentSingleFieldWithAI(field: string, bookData: any) {
     Return ONLY the new value as a JSON string under the key '${field}'.`;
 
     if (field === 'category') {
-      prompt += ` IMPORTANT: Use only standard BISAC (Book Industry Standards and Communications) category codes/names.`;
+      prompt += ` IMPORTANT: Use only standard BISAC (Book Industry Standards and Communications) category names. Ensure it is in Title Case.`;
+    } else if (field === 'cover_url') {
+      prompt += ` IMPORTANT: Search for a high-quality, valid, and working image URL for this book cover (e.g., from Open Library, Google Books, or publisher sites). Do NOT return a broken link or a placeholder. If you cannot find a verified working image URL, return null.`;
     }
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-preview',
       contents: prompt,
       config: {
+        tools: [{ googleSearch: {} }],
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -129,7 +132,7 @@ export async function augmentSingleFieldWithAI(field: string, bookData: any) {
         const aiData = JSON.parse(response.text);
         let value = aiData[field];
         
-        if (field === 'title' || field === 'author') {
+        if (field === 'title' || field === 'author' || field === 'category') {
           const toTitleCase = (str: string) => {
             if (!str) return str;
             const minorWords = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet']);

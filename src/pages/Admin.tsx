@@ -110,6 +110,8 @@ export default function Admin() {
         else if (field === 'description') setDescription(newValue);
         else if (field === 'category') setCategory(newValue);
         else if (field === 'cover_url') setCoverUrl(newValue);
+      } else if (field === 'cover_url') {
+        setAddMessage({ type: 'error', text: 'Could not find a valid, high-quality cover image online.' });
       }
     } catch (e) {
       console.error('Field update failed', e);
@@ -132,6 +134,7 @@ export default function Admin() {
   const [shelfNumber, setShelfNumber] = useState('');
   const [bookCode, setBookCode] = useState('');
   const [featured, setFeatured] = useState(false);
+  const [isDvd, setIsDvd] = useState(false);
   const [addMessage, setAddMessage] = useState({ type: '', text: '' });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastAddedBook, setLastAddedBook] = useState<{title: string, cover: string} | null>(null);
@@ -677,13 +680,24 @@ export default function Admin() {
 
   const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check for duplicate title
+    const existingBook = db.getBooks().find(b => b.title.toLowerCase() === title.trim().toLowerCase());
+    if (existingBook && (!editingBook || existingBook.id !== editingBook.id)) {
+      if (!confirm(`A book with the title "${title}" already exists. Do you want to add it anyway?`)) {
+        return;
+      }
+    }
+
     setLoading(true);
     setAddMessage({ type: '', text: '' });
+
+    const finalIsbn = isbn.trim() || `LIB-${Date.now()}`;
 
     let finalCoverUrl = coverUrl;
     if (coverUrl && coverUrl.startsWith('data:image')) {
       setAddMessage({ type: 'info', text: 'Uploading cover image to Google Drive...' });
-      const filename = `${isbn || 'book'}_cover_${Date.now()}.jpg`;
+      const filename = `${finalIsbn}_cover_${Date.now()}.jpg`;
       const uploadedUrl = await uploadImageToDrive(coverUrl, filename);
       if (uploadedUrl) {
         finalCoverUrl = uploadedUrl;
@@ -700,16 +714,17 @@ export default function Admin() {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          isbn,
+          isbn: finalIsbn,
           title,
           author,
           description,
           cover_url: finalCoverUrl,
           total_copies: copies,
           status,
-          category,
+          category: category.split(',').map(c => c.trim().replace(/^RELIGION\s*\/\s*/i, '')).join(', '),
           shelf_number: shelfNumber,
           featured,
+          is_dvd: isDvd,
           book_code: bookCode
         })
       });
@@ -2223,17 +2238,31 @@ export default function Admin() {
                 />
               </div>
               
-              <div className="flex items-center mt-8">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  checked={featured}
-                  onChange={e => setFeatured(e.target.checked)}
-                  className="h-4 w-4 text-[#1a202c] focus:ring-[#1a202c] border-slate-300 rounded"
-                />
-                <label htmlFor="featured" className="ml-2 block text-sm text-slate-900 font-medium">
-                  Featured Book
-                </label>
+              <div className="flex items-center mt-8 gap-6">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="featured"
+                    checked={featured}
+                    onChange={e => setFeatured(e.target.checked)}
+                    className="h-4 w-4 text-[#1a202c] focus:ring-[#1a202c] border-slate-300 rounded"
+                  />
+                  <label htmlFor="featured" className="ml-2 block text-sm text-slate-900 font-medium">
+                    Featured Book
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isDvd"
+                    checked={isDvd}
+                    onChange={e => setIsDvd(e.target.checked)}
+                    className="h-4 w-4 text-[#1a202c] focus:ring-[#1a202c] border-slate-300 rounded"
+                  />
+                  <label htmlFor="isDvd" className="ml-2 block text-sm text-slate-900 font-medium">
+                    This is a DVD
+                  </label>
+                </div>
               </div>
 
               <div className="md:col-span-2">
@@ -2325,7 +2354,7 @@ export default function Admin() {
               )}
               <button 
                 type="submit" 
-                disabled={loading || !isbn || !title}
+                disabled={loading || !title}
                 className="flex-[2] bg-[#1a202c] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
               >
                 {loading ? (
@@ -2383,6 +2412,7 @@ export default function Admin() {
                   setShelfNumber('');
                   setBookCode('');
                   setFeatured(false);
+                  setIsDvd(false);
                   lastFetchedIsbn.current = '';
                   lastSuccessfulIsbn.current = '';
                 }}
