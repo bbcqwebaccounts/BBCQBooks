@@ -129,6 +129,20 @@ export default function Return() {
       const data = await res.json();
 
       if (res.ok) {
+        // Cancel SMS reminders for returned loans
+        try {
+          const batchIds = data.map((loan: any) => loan.id.toString());
+          if (batchIds.length > 0) {
+            await fetch('/api/messages/cancel-by-batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ batchIds })
+            });
+          }
+        } catch (err) {
+          console.error('Failed to cancel SMS reminders:', err);
+        }
+
         setSuccess(true);
         setScannedBooks([]);
         setSuggestedBooks([]);

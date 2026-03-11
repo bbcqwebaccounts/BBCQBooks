@@ -19,6 +19,7 @@ const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
 const FILE_NAME = 'library_db.json';
 
 let driveClient: any = null;
+let sheetsClient: any = null;
 
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REFRESH_TOKEN) {
   const oauth2Client = new google.auth.OAuth2(
@@ -32,6 +33,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REFRESH_TOKEN) {
   });
 
   driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+  sheetsClient = google.sheets({ version: 'v4', auth: oauth2Client });
 }
 
 // API routes FIRST
@@ -217,6 +219,182 @@ app.post("/api/drive/backup", async (req, res) => {
   } catch (err: any) {
     console.error("Drive backup error:", err);
     res.status(500).json({ error: "Failed to create backup in Drive: " + err.message });
+  }
+});
+
+const SPREADSHEET_ID = '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+const SHEET_NAME = 'Log';
+
+app.get("/api/messages", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const response = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:I`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return res.json([]);
+    }
+
+    const headers = rows[0];
+    const messages = rows.slice(1).map((row: any[], index: number) => {
+      return {
+        rowIndex: index + 2, // +2 because 1-indexed and header row
+        logTime: row[0] || '',
+        firstName: row[1] || '',
+        surname: row[2] || '',
+        phone: row[3] || '',
+        email: row[4] || '',
+        scheduledTime: row[5] || '',
+        message: row[6] || '',
+        status: row[7] || '',
+        batchId: row[8] || ''
+      };
+    });
+
+    // Filter to only include library related messages
+    const libraryMessages = messages.filter((msg: any) => 
+      msg.message.toLowerCase().includes('library') || 
+      msg.message.toLowerCase().includes('bbcqbooks')
+    );
+
+    res.json(libraryMessages);
+  } catch (err: any) {
+    console.error("Sheets fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch messages from Sheets: " + err.message });
+  }
+});
+
+app.post("/api/messages", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = req.body;
+    const logTime = new Date().toLocaleString();
+
+    await sheetsClient.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:I`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets append error:", err);
+    res.status(500).json({ error: "Failed to append message to Sheets: " + err.message });
+  }
+});
+
+app.put("/api/messages/:rowIndex", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const { rowIndex } = req.params;
+    const { status } = req.body;
+
+    // Update the status column (H)
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!H${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[status]]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets update error:", err);
+    res.status(500).json({ error: "Failed to update message in Sheets: " + err.message });
+  }
+});
+
+app.delete("/api/messages/:rowIndex", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const { rowIndex } = req.params;
+    
+    // We can't easily delete a row without using batchUpdate, so we'll just mark it as Cancelled
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!H${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [['Cancelled']]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets delete error:", err);
+    res.status(500).json({ error: "Failed to delete message in Sheets: " + err.message });
+  }
+});
+
+app.post("/api/messages/cancel-by-batch", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const { batchIds } = req.body;
+    if (!batchIds || !batchIds.length) {
+      return res.json({ success: true });
+    }
+
+    const response = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:I`,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return res.json({ success: true });
+    }
+
+    const updates = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const status = row[7];
+      const batchId = row[8];
+      
+      if (batchIds.includes(batchId) && status === 'Queued') {
+        updates.push({
+          range: `${SHEET_NAME}!H${i + 1}`,
+          values: [['Cancelled']]
+        });
+      }
+    }
+
+    if (updates.length > 0) {
+      await sheetsClient.spreadsheets.values.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: updates
+        }
+      });
+    }
+
+    res.json({ success: true, updatedCount: updates.length });
+  } catch (err: any) {
+    console.error("Sheets cancel error:", err);
+    res.status(500).json({ error: "Failed to cancel messages in Sheets: " + err.message });
   }
 });
 

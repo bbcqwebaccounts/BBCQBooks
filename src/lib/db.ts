@@ -53,6 +53,8 @@ const defaultSettings: Setting[] = [
   { key: 'sms_confirmation_template', value: "Hi {name}, you've borrowed '{title}'. Due on {due_date}." },
   { key: 'sms_return_template', value: "Hi {name}, thanks for returning '{title}'." },
   { key: 'sms_overdue_template', value: "Hi {name}, '{title}' is overdue. Please return it ASAP." },
+  { key: 'sms_reminder_template', value: "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}" },
+  { key: 'sms_reminder_offset_days', value: "2" },
   { key: 'ADMIN_PASSWORD', value: "bbcqbooks" },
   { key: 'max_borrow_weeks', value: "4" },
   { key: 'google_client_id', value: import.meta.env.VITE_GOOGLE_CLIENT_ID || "537860369463-cbstki1j76jbg666an30gb5kcnivn860.apps.googleusercontent.com" },

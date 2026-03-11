@@ -127,13 +127,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes key={dbVersion}>
-          <Route path="/" element={<Home />} />
-          <Route path="/borrow" element={<Borrow />} />
-          <Route path="/return" element={<Return />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/extend/:token" element={<ExtendLoan />} />
-        </Routes>
+        <div key={dbVersion}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/borrow" element={<Borrow />} />
+            <Route path="/return" element={<Return />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/extend/:token" element={<ExtendLoan />} />
+          </Routes>
+        </div>
       </Layout>
     </BrowserRouter>
   );

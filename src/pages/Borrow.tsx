@@ -136,6 +136,34 @@ export default function Borrow() {
         localStorage.setItem('library_user_phone', phone);
         localStorage.setItem('library_user_email', email);
         
+        // Log SMS reminders
+        for (const loan of data) {
+          const book = scannedBooks.find(b => b.id === loan.book_id);
+          if (book && phone) {
+            const [firstName, ...surnameParts] = name.split(' ');
+            const surname = surnameParts.join(' ');
+            
+            try {
+              await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  firstName,
+                  surname,
+                  phone,
+                  email,
+                  scheduledTime: loan.sms_scheduled_time,
+                  message: loan.sms_message,
+                  status: 'Queued',
+                  batchId: loan.id.toString()
+                })
+              });
+            } catch (err) {
+              console.error('Failed to log SMS reminder:', err);
+            }
+          }
+        }
+
         setSuccess(true);
         setScannedBooks([]);
         addedIsbnsRef.current.clear();

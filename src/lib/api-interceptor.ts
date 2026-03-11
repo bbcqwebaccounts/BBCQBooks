@@ -12,7 +12,7 @@ Object.defineProperty(window, 'fetch', {
   value: async (input: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     
-    if (!urlStr.startsWith('/api/') || urlStr.startsWith('/api/drive/')) {
+    if (!urlStr.startsWith('/api/') || urlStr.startsWith('/api/drive/') || urlStr.startsWith('/api/messages')) {
       return originalFetch(input, init);
     }
 
@@ -147,22 +147,47 @@ Object.defineProperty(window, 'fetch', {
     if (path === '/api/borrow' && method === 'POST') {
       const body = JSON.parse(init?.body as string);
       const newLoans = [];
+      const weeks = body.weeks || 2;
+      
+      const template = db.getSetting('sms_reminder_template') || "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}";
+      const offsetDays = parseInt(db.getSetting('sms_reminder_offset_days') || "2");
+
       for (const isbn of body.isbns) {
         const book = db.getBookByIsbn(isbn);
         if (book) {
+          const dueDateStr = new Date(Date.now() + weeks * 7 * 24 * 60 * 60 * 1000).toISOString();
           const loan = db.addLoan({
             book_id: book.id,
             user_name: body.user_name,
             user_phone: body.user_phone,
             user_email: body.user_email || null,
             borrow_date: new Date().toISOString(),
-            due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-            original_due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            due_date: dueDateStr,
+            original_due_date: dueDateStr,
             return_date: null,
             extension_token: generateId(),
             last_overdue_notice: null
           });
-          newLoans.push(loan);
+          
+          const dueDate = new Date(dueDateStr);
+          const scheduledDate = new Date(dueDate);
+          scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
+          scheduledDate.setHours(10, 0, 0, 0);
+          const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+          
+          const [firstName] = loan.user_name.split(' ');
+          const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${loan.extension_token}`;
+          const message = template
+            .replace('{name}', firstName)
+            .replace('{title}', book.title)
+            .replace('{due_date}', dueDate.toLocaleDateString())
+            .replace('{url}', extensionUrl);
+
+          newLoans.push({
+            ...loan,
+            sms_scheduled_time: scheduledTimeStr,
+            sms_message: message
+          });
         }
       }
       return jsonResponse(newLoans);
@@ -185,16 +210,45 @@ Object.defineProperty(window, 'fetch', {
     if (path === '/api/extend' && method === 'POST') {
       const body = JSON.parse(init?.body as string);
       const extended = [];
+      
+      const template = db.getSetting('sms_reminder_template') || "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}";
+      const offsetDays = parseInt(db.getSetting('sms_reminder_offset_days') || "2");
+
       for (const token of body.tokens) {
         const loan = db.getLoanByToken(token);
         if (loan) {
           const newDueDate = new Date(loan.due_date);
           newDueDate.setDate(newDueDate.getDate() + 7);
           const updated = db.updateLoan(loan.id, { due_date: newDueDate.toISOString() });
-          extended.push(updated);
+          
+          const book = db.getBookById(updated.book_id);
+          const title = book?.title || 'Unknown Book';
+          
+          const scheduledDate = new Date(newDueDate);
+          scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
+          scheduledDate.setHours(10, 0, 0, 0);
+          const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+          
+          const [firstName] = updated.user_name.split(' ');
+          const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${updated.extension_token}`;
+          const message = template
+            .replace('{name}', firstName)
+            .replace('{title}', title)
+            .replace('{due_date}', newDueDate.toLocaleDateString())
+            .replace('{url}', extensionUrl);
+
+          extended.push({
+            ...updated,
+            title,
+            sms_scheduled_time: scheduledTimeStr,
+            sms_message: message
+          });
         }
       }
-      return jsonResponse(extended);
+      return jsonResponse({
+        message: `Successfully extended ${extended.length} loan(s).`,
+        results: extended
+      });
     }
     if (path.match(/^\/api\/loans\/suggestions\/[^\/]+$/) && method === 'GET') {
       const isbn = path.split('/').pop()!;
@@ -208,6 +262,18 @@ Object.defineProperty(window, 'fetch', {
     if (path.match(/^\/api\/loans\/\d+\/return$/) && method === 'POST') {
       const id = parseInt(path.split('/')[3]);
       const updated = db.updateLoan(id, { return_date: new Date().toISOString() });
+      
+      // Attempt to cancel SMS reminder via API
+      try {
+        fetch('/api/messages/cancel-by-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batchIds: [id.toString()] })
+        }).catch(err => console.error('Failed to cancel SMS reminder:', err));
+      } catch (e) {
+        // Ignore errors
+      }
+      
       return jsonResponse(updated);
     }
     if (path.match(/^\/api\/loans\/\d+\/extend$/) && method === 'POST') {
@@ -217,7 +283,32 @@ Object.defineProperty(window, 'fetch', {
         const newDueDate = new Date(loan.due_date);
         newDueDate.setDate(newDueDate.getDate() + 7);
         const updated = db.updateLoan(id, { due_date: newDueDate.toISOString() });
-        return jsonResponse(updated);
+        
+        const template = db.getSetting('sms_reminder_template') || "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}";
+        const offsetDays = parseInt(db.getSetting('sms_reminder_offset_days') || "2");
+        
+        const book = db.getBookById(updated.book_id);
+        const title = book?.title || 'Unknown Book';
+        
+        const scheduledDate = new Date(newDueDate);
+        scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
+        scheduledDate.setHours(10, 0, 0, 0);
+        const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+        
+        const [firstName] = updated.user_name.split(' ');
+        const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${updated.extension_token}`;
+        const message = template
+          .replace('{name}', firstName)
+          .replace('{title}', title)
+          .replace('{due_date}', newDueDate.toLocaleDateString())
+          .replace('{url}', extensionUrl);
+
+        return jsonResponse({
+          ...updated,
+          title,
+          sms_scheduled_time: scheduledTimeStr,
+          sms_message: message
+        });
       }
       return jsonResponse({ error: 'Not found' }, 404);
     }

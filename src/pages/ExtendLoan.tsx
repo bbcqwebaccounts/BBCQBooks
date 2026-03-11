@@ -63,6 +63,45 @@ export default function ExtendLoan() {
       const data = await res.json();
       
       if (res.ok) {
+        // Cancel old SMS reminders and create new ones
+        try {
+          const results = data.results || [];
+          if (results.length > 0) {
+            // 1. Cancel old reminders
+            const batchIds = results.map((loan: any) => loan.id.toString());
+            await fetch('/api/messages/cancel-by-batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ batchIds })
+            });
+
+            // 2. Create new reminders
+            for (const loan of results) {
+              if (loan.user_phone) {
+                const [firstName, ...surnameParts] = loan.user_name.split(' ');
+                const surname = surnameParts.join(' ');
+                
+                await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    firstName,
+                    surname,
+                    phone: loan.user_phone,
+                    email: loan.user_email || '',
+                    scheduledTime: loan.sms_scheduled_time,
+                    message: loan.sms_message,
+                    status: 'Queued',
+                    batchId: loan.id.toString()
+                  })
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to update SMS reminders:', err);
+        }
+
         setStatus('success');
         setMessage(data.message);
         setResults(data.results || []);

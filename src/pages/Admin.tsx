@@ -44,6 +44,7 @@ import {
 import { useSearchParams, Link } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { connectGoogleDrive, disconnectGoogleDrive, isBackendConfigured, uploadImageToDrive } from '../lib/drive-sync';
+import { db } from '../lib/db';
 // @ts-ignore
 import Barcode from 'react-barcode';
 
