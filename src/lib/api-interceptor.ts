@@ -46,11 +46,76 @@ Object.defineProperty(window, 'fetch', {
       try {
         const safeTab = `'${sheetTab}'`;
         const encodedTab = encodeURIComponent(safeTab);
+        if (path === '/api/messages/create-sheet' && method === 'POST') {
+          const res = await originalFetch('https://sheets.googleapis.com/v4/spreadsheets', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              properties: {
+                title: 'Library SMS Logs'
+              },
+              sheets: [
+                {
+                  properties: {
+                    title: 'Messages'
+                  },
+                  data: [
+                    {
+                      startRow: 0,
+                      startColumn: 0,
+                      rowData: [
+                        {
+                          values: [
+                            { userEnteredValue: { stringValue: 'Log Time' } },
+                            { userEnteredValue: { stringValue: 'First Name' } },
+                            { userEnteredValue: { stringValue: 'Surname' } },
+                            { userEnteredValue: { stringValue: 'Phone' } },
+                            { userEnteredValue: { stringValue: 'Email' } },
+                            { userEnteredValue: { stringValue: 'Scheduled Time' } },
+                            { userEnteredValue: { stringValue: 'Message' } },
+                            { userEnteredValue: { stringValue: 'Status' } },
+                            { userEnteredValue: { stringValue: 'Batch ID' } }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            })
+          });
+          
+          if (!res.ok) {
+            const errBody = await res.text();
+            console.error("Failed to create sheet:", res.status, errBody);
+            throw new Error(`Failed to create Google Sheet: ${res.statusText}`);
+          }
+          
+          const data = await res.json();
+          const newSheetId = data.spreadsheetId;
+          
+          // Update the setting in the database
+          db.updateSetting('sms_google_sheet_id', newSheetId);
+          db.updateSetting('sms_google_sheet_tab', 'Messages');
+          
+          return jsonResponse({ success: true, sheetId: newSheetId });
+        }
+
         if (path === '/api/messages' && method === 'GET') {
           const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
-          if (!res.ok) throw new Error('Failed to fetch from Google Sheets');
+          if (!res.ok) {
+            const errBody = await res.text();
+            console.error("Google Sheets API Error:", res.status, res.statusText, errBody);
+            if (res.status === 403 || res.status === 404) {
+              throw new Error("Cannot access Google Sheet. Please check the Sheet ID in Settings and ensure your Google account has access.");
+            }
+            throw new Error(`Failed to fetch from Google Sheets: ${res.status} ${res.statusText}`);
+          }
           const data = await res.json();
           const rows = data.values || [];
           if (rows.length === 0) return jsonResponse([]);
@@ -173,7 +238,7 @@ Object.defineProperty(window, 'fetch', {
         }
       } catch (err: any) {
         console.error("Sheets API error:", err);
-        return jsonResponse({ error: err.message }, 500);
+        return jsonResponse({ error: err.message || "Failed to fetch from Google Sheets" }, 500);
       }
     }
 

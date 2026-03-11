@@ -1,6 +1,6 @@
 import { db } from './db';
 
-const SCOPES = 'https://www.googleapis.com/auth/drive';
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
 const FILE_NAME = 'library_db.json';
 
 let tokenClient: any;

@@ -1337,7 +1337,43 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {messages.length === 0 ? (
+                {messagesError ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center">
+                      <div className="flex flex-col items-center justify-center text-rose-600 gap-2">
+                        <AlertCircle className="w-8 h-8 opacity-50" />
+                        <p className="font-medium">Failed to sync messages</p>
+                        <p className="text-sm opacity-80 max-w-md">{messagesError}</p>
+                        {googleConnected && messagesError.includes('Cannot access Google Sheet') && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                setLoading(true);
+                                const res = await fetch('/api/messages/create-sheet', { method: 'POST' });
+                                const data = await res.json();
+                                if (res.ok && data.sheetId) {
+                                  setSettings(prev => prev.map(s => 
+                                    s.key === 'sms_google_sheet_id' ? { ...s, value: data.sheetId } :
+                                    s.key === 'sms_google_sheet_tab' ? { ...s, value: 'Messages' } : s
+                                  ));
+                                  fetchMessages();
+                                }
+                              } catch (err) {
+                                console.error('Error creating sheet', err);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            className="mt-4 bg-rose-100 text-rose-700 px-4 py-2 rounded-lg font-medium hover:bg-rose-200 transition-colors text-sm flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Create New Sheet Automatically
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : messages.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-500">No messages found.</td>
                   </tr>
@@ -1753,9 +1789,51 @@ export default function Admin() {
                     </p>
                   )}
                   {setting.key === 'sms_google_sheet_id' && (
-                    <p className="mt-2 text-[10px] text-slate-400">
-                      The ID of the Google Sheet where SMS messages are logged. You can find this in the URL of your Google Sheet.
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-[10px] text-slate-400 mb-2">
+                        The ID of the Google Sheet where SMS messages are logged. You can find this in the URL of your Google Sheet.
+                      </p>
+                      {googleConnected && (
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setLoading(true);
+                                const res = await fetch('/api/messages/create-sheet', { method: 'POST' });
+                                const data = await res.json();
+                                if (res.ok && data.sheetId) {
+                                  setSettings(prev => prev.map(s => 
+                                    s.key === 'sms_google_sheet_id' ? { ...s, value: data.sheetId } :
+                                    s.key === 'sms_google_sheet_tab' ? { ...s, value: 'Messages' } : s
+                                  ));
+                                  // Use a temporary success message instead of alert
+                                  const btn = document.getElementById('create-sheet-btn');
+                                  if (btn) {
+                                    btn.textContent = 'Created!';
+                                    btn.classList.add('bg-emerald-50', 'text-emerald-700');
+                                    setTimeout(() => {
+                                      btn.textContent = 'Create New Sheet Automatically';
+                                      btn.classList.remove('bg-emerald-50', 'text-emerald-700');
+                                    }, 3000);
+                                  }
+                                } else {
+                                  console.error('Failed to create sheet:', data.error);
+                                }
+                              } catch (err) {
+                                console.error('Error creating sheet', err);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            id="create-sheet-btn"
+                            className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-medium hover:bg-indigo-100 transition-colors"
+                          >
+                            Create New Sheet Automatically
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                   {setting.key === 'sms_google_sheet_tab' && (
                     <p className="mt-2 text-[10px] text-slate-400">
