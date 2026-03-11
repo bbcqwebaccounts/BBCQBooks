@@ -133,6 +133,54 @@ app.post("/api/drive/upload", async (req, res) => {
   }
 });
 
+app.post("/api/drive/upload-image", async (req, res) => {
+  if (!driveClient) {
+    return res.status(500).json({ error: "Google Drive is not configured on the server." });
+  }
+
+  try {
+    const { base64Data, filename } = req.body;
+    const folderId = '1tD6K4k2FuW3R-jzymmBRevzir1NBtXWI';
+
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    const fileMetadata: any = {
+      name: filename,
+      mimeType: 'image/jpeg',
+      parents: [folderId]
+    };
+
+    const media = {
+      mimeType: 'image/jpeg',
+      body: require('stream').Readable.from(buffer)
+    };
+
+    const file = await driveClient.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id',
+      supportsAllDrives: true
+    });
+
+    const fileId = file.data.id;
+
+    await driveClient.permissions.create({
+      fileId: fileId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      },
+      supportsAllDrives: true
+    });
+
+    res.json({ url: `https://drive.google.com/uc?id=${fileId}` });
+  } catch (err: any) {
+    console.error("Image upload error:", err);
+    res.status(500).json({ error: "Failed to upload image to Drive: " + err.message });
+  }
+});
+
 app.post("/api/drive/backup", async (req, res) => {
   if (!driveClient) {
     return res.status(500).json({ error: "Google Drive is not configured on the server." });

@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
-import { connectGoogleDrive, disconnectGoogleDrive, isBackendConfigured } from '../lib/drive-sync';
+import { connectGoogleDrive, disconnectGoogleDrive, isBackendConfigured, uploadImageToDrive } from '../lib/drive-sync';
 // @ts-ignore
 import Barcode from 'react-barcode';
 
@@ -680,6 +680,18 @@ export default function Admin() {
     setLoading(true);
     setAddMessage({ type: '', text: '' });
 
+    let finalCoverUrl = coverUrl;
+    if (coverUrl && coverUrl.startsWith('data:image')) {
+      setAddMessage({ type: 'info', text: 'Uploading cover image to Google Drive...' });
+      const filename = `${isbn || 'book'}_cover_${Date.now()}.jpg`;
+      const uploadedUrl = await uploadImageToDrive(coverUrl, filename);
+      if (uploadedUrl) {
+        finalCoverUrl = uploadedUrl;
+      } else {
+        setAddMessage({ type: 'error', text: 'Failed to upload cover image to Google Drive. Saving with local thumbnail.' });
+      }
+    }
+
     const url = editingBook ? `/api/books/${editingBook.id}` : '/api/books';
     const method = editingBook ? 'PUT' : 'POST';
 
@@ -692,7 +704,7 @@ export default function Admin() {
           title,
           author,
           description,
-          cover_url: coverUrl,
+          cover_url: finalCoverUrl,
           total_copies: copies,
           status,
           category,
@@ -705,7 +717,7 @@ export default function Admin() {
       if (res.ok) {
         const data = await res.json();
         if (!editingBook) {
-          setLastAddedBook({ title, cover: coverUrl });
+          setLastAddedBook({ title, cover: finalCoverUrl });
           setShowSuccessModal(true);
           setIsbn('');
           setTitle('');

@@ -321,6 +321,88 @@ async function syncWithDrive() {
   }
 }
 
+export async function uploadImageToDrive(base64Data: string, filename: string): Promise<string | null> {
+  // Use the specific folder ID requested by the user
+  const folderId = '1tD6K4k2FuW3R-jzymmBRevzir1NBtXWI';
+
+  if (isBackendConfigured) {
+    try {
+      const res = await fetch('/api/drive/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Data, filename })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.url;
+      }
+    } catch (err) {
+      console.error('Backend image upload error:', err);
+    }
+  }
+
+  if (!accessToken) {
+    console.warn('No access token for uploading image');
+    return null;
+  }
+
+  try {
+    const metadata = {
+      name: filename,
+      mimeType: 'image/jpeg',
+      parents: [folderId]
+    };
+
+    // Remove prefix if present
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+
+    // Convert base64 to Blob
+    const byteString = atob(cleanBase64);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: 'image/jpeg' });
+
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', blob);
+
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to upload image');
+    }
+
+    const data = await res.json();
+    const fileId = data.id;
+    
+    // Make the file publicly readable so it can be displayed in an img tag
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
+      method: 'POST',
+      headers: { 
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role: 'reader',
+        type: 'anyone'
+      })
+    });
+
+    // Return the web view link or construct a direct link
+    return `https://drive.google.com/uc?id=${fileId}`;
+  } catch (err) {
+    console.error('Image upload error:', err);
+    return null;
+  }
+}
+
 export async function downloadFromDrive() {
   if (isBackendConfigured) {
     try {

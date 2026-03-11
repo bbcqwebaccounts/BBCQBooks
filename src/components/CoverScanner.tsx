@@ -59,10 +59,44 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
         const base64Image = canvas.toDataURL('image/jpeg', 0.8);
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
         
+        // Generate a smaller thumbnail for saving to the database to prevent QuotaExceededError
+        const thumbCanvas = document.createElement('canvas');
+        const THUMB_MAX_WIDTH = 300;
+        const THUMB_MAX_HEIGHT = 450;
+        let thumbWidth = img.width;
+        let thumbHeight = img.height;
+        
+        if (thumbWidth > thumbHeight) {
+          if (thumbWidth > THUMB_MAX_WIDTH) {
+            thumbHeight *= THUMB_MAX_WIDTH / thumbWidth;
+            thumbWidth = THUMB_MAX_WIDTH;
+          }
+        } else {
+          if (thumbHeight > THUMB_MAX_HEIGHT) {
+            thumbWidth *= THUMB_MAX_HEIGHT / thumbHeight;
+            thumbHeight = THUMB_MAX_HEIGHT;
+          }
+        }
+        thumbCanvas.width = thumbWidth;
+        thumbCanvas.height = thumbHeight;
+        const thumbCtx = thumbCanvas.getContext('2d');
+        if (thumbCtx) {
+          thumbCtx.drawImage(img, 0, 0, thumbWidth, thumbHeight);
+        }
+        const thumbBase64Image = thumbCanvas.toDataURL('image/jpeg', 0.7);
+        
         try {
-          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+          // Check multiple possible locations for the API key
+          // 1. process.env (injected by Vite define or AI Studio)
+          // 2. import.meta.env (standard Vite env vars)
+          const apiKey = 
+            process.env.API_KEY || 
+            process.env.GEMINI_API_KEY || 
+            (import.meta as any).env?.VITE_API_KEY || 
+            (import.meta as any).env?.VITE_GEMINI_API_KEY;
+            
           if (!apiKey) {
-            onError('API key is missing');
+            onError('API key is missing. Please ensure you have set the API_KEY secret.');
             setIsProcessing(false);
             return;
           }
@@ -190,7 +224,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
               }
               throw e;
             }
-            onResult({ ...result, cover_url: base64Image });
+            onResult({ ...result, cover_url: thumbBase64Image });
           }
         } catch (err: any) {
           console.error(err);
