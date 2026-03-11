@@ -100,7 +100,7 @@ Object.defineProperty(window, 'fetch', {
           const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = body;
           const logTime = new Date().toLocaleString();
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J:append?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B1:J1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
             method: 'POST',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -168,7 +168,10 @@ Object.defineProperty(window, 'fetch', {
             const status = row[7];
             const batchId = row[8];
             
+            console.log('Checking row:', i, 'batchId:', batchId, 'status:', status);
+            
             if (batchIds.includes(batchId) && status === 'Queued') {
+              console.log('Found reminder to cancel:', batchId, status);
               dataToUpdate.push({
                 range: `${safeTab}!I${i + 1}`,
                 values: [['Cancelled']]
@@ -348,7 +351,7 @@ Object.defineProperty(window, 'fetch', {
           const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
           
           const [firstName] = loan.user_name.split(' ');
-          const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${loan.extension_token}`;
+          const extensionUrl = `${window.location.origin}/extend?token=${loan.extension_token}`;
           const message = template
             .replace('{name}', firstName)
             .replace('{title}', book.title)
@@ -386,12 +389,24 @@ Object.defineProperty(window, 'fetch', {
       const template = db.getSetting('sms_reminder_template') || "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}";
       const offsetDays = parseInt(db.getSetting('sms_reminder_offset_days') || "2");
       const reminderEnabled = db.getSetting('sms_reminder_enabled') !== 'false';
+      const maxBorrowWeeksStr = db.getSetting('max_borrow_weeks');
+      const maxBorrowWeeks = maxBorrowWeeksStr ? parseInt(maxBorrowWeeksStr) : 0;
 
       for (const token of body.tokens) {
         const loan = db.getLoanByToken(token);
         if (loan) {
           const newDueDate = new Date(loan.due_date);
           newDueDate.setDate(newDueDate.getDate() + 7);
+          
+          if (maxBorrowWeeks > 0) {
+            const borrowDate = new Date(loan.borrow_date);
+            const diffTime = Math.abs(newDueDate.getTime() - borrowDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > maxBorrowWeeks * 7) {
+              continue; // Skip this loan if it exceeds max borrow weeks
+            }
+          }
+
           const updated = db.updateLoan(loan.id, { due_date: newDueDate.toISOString() });
           
           const book = db.getBookById(updated.book_id);
@@ -403,7 +418,7 @@ Object.defineProperty(window, 'fetch', {
           const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
           
           const [firstName] = updated.user_name.split(' ');
-          const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${updated.extension_token}`;
+          const extensionUrl = `${window.location.origin}/extend?token=${updated.extension_token}`;
           const message = template
             .replace('{name}', firstName)
             .replace('{title}', title)
@@ -455,6 +470,18 @@ Object.defineProperty(window, 'fetch', {
       if (loan) {
         const newDueDate = new Date(loan.due_date);
         newDueDate.setDate(newDueDate.getDate() + 7);
+
+        const maxBorrowWeeksStr = db.getSetting('max_borrow_weeks');
+        const maxBorrowWeeks = maxBorrowWeeksStr ? parseInt(maxBorrowWeeksStr) : 0;
+        if (maxBorrowWeeks > 0) {
+          const borrowDate = new Date(loan.borrow_date);
+          const diffTime = Math.abs(newDueDate.getTime() - borrowDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays > maxBorrowWeeks * 7) {
+            return jsonResponse({ error: `Cannot extend: Exceeds maximum borrow limit of ${maxBorrowWeeks} weeks.` }, 400);
+          }
+        }
+
         const updated = db.updateLoan(id, { due_date: newDueDate.toISOString() });
         
         const template = db.getSetting('sms_reminder_template') || "Hi {name}, just a friendly reminder that your book '{title}' is due back at the library on {due_date}. You can extend your loan here: {url}";
@@ -469,7 +496,7 @@ Object.defineProperty(window, 'fetch', {
         const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
         
         const [firstName] = updated.user_name.split(' ');
-        const extensionUrl = `https://bbcqbooks.pages.dev/extend?token=${updated.extension_token}`;
+        const extensionUrl = `${window.location.origin}/extend?token=${updated.extension_token}`;
         const message = template
           .replace('{name}', firstName)
           .replace('{title}', title)
@@ -602,9 +629,13 @@ Object.defineProperty(window, 'fetch', {
         title: db.getBookById(l.book_id)?.title || 'Unknown Book'
       }));
 
+      const maxBorrowWeeksStr = db.getSetting('max_borrow_weeks');
+      const maxBorrowWeeks = maxBorrowWeeksStr ? parseInt(maxBorrowWeeksStr) : 0;
+
       return jsonResponse({
         targetLoan: { ...targetLoan, title: book?.title },
-        otherLoans
+        otherLoans,
+        maxBorrowWeeks
       });
     }
 

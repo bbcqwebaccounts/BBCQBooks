@@ -133,6 +133,7 @@ export default function App() {
             <Route path="/borrow" element={<Borrow />} />
             <Route path="/return" element={<Return />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/extend" element={<ExtendLoan />} />
             <Route path="/extend/:token" element={<ExtendLoan />} />
           </Routes>
         </div>
