@@ -100,7 +100,7 @@ Object.defineProperty(window, 'fetch', {
           const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = body;
           const logTime = new Date().toLocaleString();
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B1:J1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
             method: 'POST',
             headers: { 
               Authorization: `Bearer ${accessToken}`,

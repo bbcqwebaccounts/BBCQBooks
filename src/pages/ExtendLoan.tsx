@@ -138,7 +138,7 @@ export default function ExtendLoan() {
       }
     } catch (err) {
       setStatus('error');
-      setMessage('A network error occurred while extending.');
+      setMessage(err instanceof Error ? err.message : 'A network error occurred while extending.');
     }
   };
 
@@ -290,7 +290,13 @@ export default function ExtendLoan() {
             </div>
             
             <div className="p-4 bg-slate-50 rounded-2xl text-sm text-slate-500">
-              If you believe this is an error, please contact the library administrator.
+              {message.includes('Google session expired') ? (
+                <>
+                  It looks like your Google session has expired. Please go to the <Link to="/admin" className="text-indigo-600 hover:underline">Admin Settings</Link> and disconnect/reconnect your Google account.
+                </>
+              ) : (
+                'If you believe this is an error, please contact the library administrator.'
+              )}
             </div>
 
             <Link 

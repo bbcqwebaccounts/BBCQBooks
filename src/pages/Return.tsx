@@ -150,7 +150,7 @@ export default function Return() {
         setError(data.error || 'Failed to return books.');
       }
     } catch (err) {
-      setError('An error occurred while returning.');
+      setError(err instanceof Error ? err.message : 'An error occurred while returning.');
     } finally {
       setLoading(false);
     }
@@ -245,8 +245,13 @@ export default function Return() {
       </div>
 
       {error && (
-        <div className="bg-rose-50 text-rose-600 p-4 rounded-xl text-sm font-medium border border-rose-100">
-          {error}
+        <div className="bg-rose-50 text-rose-600 p-4 rounded-xl text-sm font-medium border border-rose-100 space-y-2">
+          <p>{error}</p>
+          {error.includes('Google session expired') && (
+            <p>
+              Please go to the <Link to="/admin" className="text-indigo-600 hover:underline">Admin Settings</Link> and disconnect/reconnect your Google account.
+            </p>
+          )}
         </div>
       )}
 
@@ -298,7 +303,7 @@ export default function Return() {
             {scannedBooks.map((book, idx) => (
               <li key={idx} className="p-4 flex justify-between items-center gap-4 hover:bg-slate-50 transition-colors">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-900 truncate">{book.title}</p>
+                  <p className="font-medium text-slate-900 truncate">{book.title}</p>
                   <p className="text-sm text-slate-500 truncate">{book.author}</p>
                   <p className="text-[10px] text-slate-400 font-mono mt-1">{book.isbn}</p>
                 </div>

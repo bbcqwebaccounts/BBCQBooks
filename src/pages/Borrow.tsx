@@ -24,8 +24,16 @@ export default function Borrow() {
   const [error, setError] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [settings, setSettings] = useState<any[]>([]);
   const [searchParams] = useSearchParams();
   const addedIsbnsRef = React.useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => setSettings(data.settings || []))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const isbnParam = searchParams.get('isbn');
@@ -136,30 +144,61 @@ export default function Borrow() {
         localStorage.setItem('library_user_phone', phone);
         localStorage.setItem('library_user_email', email);
         
-        // Log SMS reminders
+        // Log SMS messages
         for (const loan of data) {
           const book = scannedBooks.find(b => b.id === loan.book_id);
           if (book && phone) {
             const [firstName, ...surnameParts] = name.split(' ');
             const surname = surnameParts.join(' ');
             
-            try {
-              await fetch('/api/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  firstName,
-                  surname,
-                  phone,
-                  email,
-                  scheduledTime: loan.sms_scheduled_time,
-                  message: loan.sms_message,
-                  status: 'Queued',
-                  batchId: `Library-${loan.id}`
-                })
-              });
-            } catch (err) {
-              console.error('Failed to log SMS reminder:', err);
+            // Confirmation message
+            if (settings.find(s => s.key === 'sms_confirmation_enabled')?.value === 'true') {
+              const template = settings.find(s => s.key === 'sms_confirmation_template')?.value || "Hi {name}, you've borrowed '{title}'. Due on {due_date}.";
+              const message = template
+                .replace('{name}', firstName)
+                .replace('{title}', book.title)
+                .replace('{due_date}', new Date(loan.due_date).toLocaleDateString());
+              
+              try {
+                await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    firstName,
+                    surname,
+                    phone,
+                    email,
+                    scheduledTime: new Date().toLocaleString(),
+                    message,
+                    status: 'Queued',
+                    batchId: `Library-${loan.id}`
+                  })
+                });
+              } catch (err) {
+                console.error('Failed to log SMS confirmation:', err);
+              }
+            }
+            
+            // Reminder message
+            if (settings.find(s => s.key === 'sms_reminder_enabled')?.value === 'true' && loan.sms_scheduled_time) {
+              try {
+                await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    firstName,
+                    surname,
+                    phone,
+                    email,
+                    scheduledTime: loan.sms_scheduled_time,
+                    message: loan.sms_message,
+                    status: 'Queued',
+                    batchId: `Library-${loan.id}`
+                  })
+                });
+              } catch (err) {
+                console.error('Failed to log SMS reminder:', err);
+              }
             }
           }
         }
