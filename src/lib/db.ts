@@ -55,9 +55,9 @@ const defaultSettings: Setting[] = [
   { key: 'sms_overdue_template', value: "Hi {name}, '{title}' is overdue. Please return it ASAP." },
   { key: 'ADMIN_PASSWORD', value: "bbcqbooks" },
   { key: 'max_borrow_weeks', value: "4" },
-  { key: 'google_client_id', value: "" },
-  { key: 'google_apps_script_url', value: "" },
-  { key: 'google_drive_folder_id', value: "1tD6K4k2FuW3R-jzymmBRevzir1NBtXWI" },
+  { key: 'google_client_id', value: import.meta.env.VITE_GOOGLE_CLIENT_ID || "537860369463-cbstki1j76jbg666an30gb5kcnivn860.apps.googleusercontent.com" },
+  { key: 'google_apps_script_url', value: import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzQZ7XSZjYzLVO7w4Lw62QbPLD1oC4dsRLEvasX5DE2fe1D-xm2iCMsjJxNyq4295lH/exec" },
+  { key: 'google_drive_folder_id', value: import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "1tD6K4k2FuW3R-jzymmBRevzir1NBtXWI" },
   { key: 'backup_frequency_days', value: "7" }
 ];
 
@@ -157,8 +157,24 @@ class LocalDB {
   }
 
   // --- Settings ---
-  getSettings() { return this.data.settings; }
-  getSetting(key: string) { return this.data.settings.find(s => s.key === key)?.value; }
+  getSettings() { 
+    return this.data.settings.map(s => {
+      if (!s.value) {
+        const defaultSetting = defaultSettings.find(ds => ds.key === s.key);
+        if (defaultSetting && defaultSetting.value) {
+          return { ...s, value: defaultSetting.value };
+        }
+      }
+      return s;
+    });
+  }
+  getSetting(key: string) { 
+    const val = this.data.settings.find(s => s.key === key)?.value; 
+    if (!val) {
+      return defaultSettings.find(s => s.key === key)?.value || "";
+    }
+    return val;
+  }
   updateSetting(key: string, value: string, triggerSync: boolean = true) {
     const index = this.data.settings.findIndex(s => s.key === key);
     if (index !== -1) {
