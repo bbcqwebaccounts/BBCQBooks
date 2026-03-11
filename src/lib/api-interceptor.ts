@@ -70,8 +70,8 @@ Object.defineProperty(window, 'fetch', {
           const rows = data.values || [];
           if (rows.length === 0) return jsonResponse([]);
 
-          const messages = rows.slice(1).map((row: any[], index: number) => ({
-            rowIndex: index + 2,
+          const messages = rows.map((row: any[], index: number) => ({
+            rowIndex: index + 1,
             logTime: row[0] || '',
             firstName: row[1] || '',
             surname: row[2] || '',
@@ -83,10 +83,15 @@ Object.defineProperty(window, 'fetch', {
             batchId: row[8] || ''
           }));
 
-          const libraryMessages = messages.filter((msg: any) => 
-            msg.batchId && msg.batchId.startsWith('Library')
+          const validMessages = messages.filter((msg: any) => 
+            msg.phone && 
+            msg.phone.toLowerCase() !== 'phone' && 
+            msg.scheduledTime && 
+            msg.scheduledTime.toLowerCase() !== 'scheduled send date and time' &&
+            msg.scheduledTime.toLowerCase() !== 'scheduled time'
           );
-          return jsonResponse(libraryMessages);
+          
+          return jsonResponse(validMessages);
         }
 
         if (path === '/api/messages' && method === 'POST') {
