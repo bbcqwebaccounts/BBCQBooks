@@ -12,7 +12,7 @@ Object.defineProperty(window, 'fetch', {
   value: async (input: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     
-    if (!urlStr.startsWith('/api/')) {
+    if (!urlStr.startsWith('/api/') || urlStr.startsWith('/api/drive/')) {
       return originalFetch(input, init);
     }
 

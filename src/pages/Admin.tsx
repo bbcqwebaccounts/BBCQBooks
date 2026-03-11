@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
-import { connectGoogleDrive, disconnectGoogleDrive } from '../lib/drive-sync';
+import { connectGoogleDrive, disconnectGoogleDrive, isBackendConfigured } from '../lib/drive-sync';
 // @ts-ignore
 import Barcode from 'react-barcode';
 
@@ -1464,7 +1464,39 @@ export default function Admin() {
                     Automatically saves your library to Google Drive whenever changes are made.
                   </p>
                   
-                  {googleConnected ? (
+                  {isBackendConfigured ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium bg-emerald-50 px-3 py-2 rounded-lg w-fit">
+                          <Check className="w-4 h-4" />
+                          Connected to Google Drive (Server-Side)
+                        </div>
+                      </div>
+                      {settings.find(s => s.key === 'last_drive_backup')?.value && (
+                        <p className="text-xs text-slate-400">
+                          Last saved: {new Date(settings.find(s => s.key === 'last_drive_backup')?.value || '').toLocaleString()}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={handleDriveBackup}
+                          disabled={loading}
+                          className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                          {loading ? 'Backing up...' : 'Sync Now'}
+                        </button>
+                        <button 
+                          onClick={handleDatedBackup}
+                          disabled={loading}
+                          className="flex-1 py-3 bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Database className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                          Dated Backup
+                        </button>
+                      </div>
+                    </div>
+                  ) : googleConnected ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium bg-emerald-50 px-3 py-2 rounded-lg w-fit">
@@ -1568,13 +1600,24 @@ export default function Admin() {
                 <div>
                   <h4 className="font-bold text-slate-900 mb-1">Google Drive Sync (Admin Only)</h4>
                   <p className="text-sm text-slate-500">
-                    {googleConnected 
+                    {isBackendConfigured
+                      ? "Connected to Google Drive (Server-Side)."
+                      : googleConnected 
                       ? "Connected to your Google Account." 
                       : "Connect your account to sync your library database to Google Drive."}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">Note: You must set your <strong>google_client_id</strong> below first. This method only syncs when YOU are logged in.</p>
+                  {!isBackendConfigured && (
+                    <p className="text-xs text-slate-400 mt-1">Note: You must set your <strong>google_client_id</strong> below first. This method only syncs when YOU are logged in.</p>
+                  )}
                 </div>
-                {googleConnected ? (
+                {isBackendConfigured ? (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold">
+                      <Check className="w-4 h-4" />
+                      Server-Side Connected
+                    </div>
+                  </div>
+                ) : googleConnected ? (
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold">
                       <Check className="w-4 h-4" />

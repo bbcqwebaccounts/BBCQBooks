@@ -6,7 +6,19 @@ const FILE_NAME = 'library_db.json';
 let tokenClient: any;
 let accessToken: string | null = null;
 
+export let isBackendConfigured = false;
+
 export async function initDriveSync() {
+  try {
+    const res = await fetch('/api/health');
+    if (res.ok) {
+      const data = await res.json();
+      isBackendConfigured = data.driveConfigured;
+    }
+  } catch (err) {
+    console.error('Failed to check backend health', err);
+  }
+
   // Check if we have a saved token
   const savedTokenStr = db.getSetting('google_oauth_tokens');
   if (savedTokenStr) {
@@ -38,7 +50,7 @@ export async function initDriveSync() {
   });
 
   window.addEventListener('force_drive_sync', () => {
-    if (accessToken) {
+    if (accessToken || isBackendConfigured) {
       syncWithDrive();
     } else {
       connectGoogleDrive();
@@ -50,7 +62,7 @@ export async function initDriveSync() {
   });
 
   window.addEventListener('force_dated_backup', () => {
-    if (accessToken) {
+    if (accessToken || isBackendConfigured) {
       createDatedBackup().then(success => {
         if (success) {
           window.dispatchEvent(new CustomEvent('dated_backup_success'));
@@ -95,14 +107,30 @@ export function disconnectGoogleDrive() {
 }
 
 export async function createDatedBackup() {
+  const localData = db.getDatabase();
+  const localJson = JSON.stringify(localData);
+  const now = new Date();
+
+  if (isBackendConfigured) {
+    try {
+      await fetch('/api/drive/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: localJson
+      });
+      console.log(`Created manual dated backup via Backend`);
+      db.updateSetting('last_weekly_backup', now.toISOString(), false); // Reset weekly timer
+      return true;
+    } catch (err) {
+      console.error('Backend backup error:', err);
+      return false;
+    }
+  }
+
   if (!accessToken) return;
   
   try {
     const folderId = db.getSetting('google_drive_folder_id');
-    const localData = db.getDatabase();
-    const localJson = JSON.stringify(localData);
-    
-    const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
     const backupFileName = `library_db_backup_${dateStr}_${timeStr}.json`;
@@ -142,9 +170,25 @@ function debounceSync() {
 }
 
 async function syncWithDrive() {
-  const scriptUrl = db.getSetting('google_apps_script_url');
   const localData = db.getDatabase();
   const localJson = JSON.stringify(localData);
+
+  if (isBackendConfigured) {
+    try {
+      await fetch('/api/drive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: localJson
+      });
+      console.log('Synced to Google Drive via Backend');
+      db.updateSetting('last_drive_backup', new Date().toISOString(), false);
+      return;
+    } catch (err) {
+      console.error('Backend sync error:', err);
+    }
+  }
+
+  const scriptUrl = db.getSetting('google_apps_script_url');
 
   if (scriptUrl) {
     try {
@@ -276,6 +320,22 @@ async function syncWithDrive() {
 }
 
 export async function downloadFromDrive() {
+  if (isBackendConfigured) {
+    try {
+      const res = await fetch('/api/drive/download');
+      if (res.ok) {
+        const remoteData = await res.json();
+        if (remoteData && remoteData.books) {
+          db.replaceDatabase(remoteData);
+          console.log('Downloaded database from Google Drive via Backend');
+        }
+      }
+      return;
+    } catch (err) {
+      console.error('Backend download error:', err);
+    }
+  }
+
   const scriptUrl = db.getSetting('google_apps_script_url');
 
   if (scriptUrl) {
