@@ -836,24 +836,23 @@ export default function Admin() {
         setEditingMessage(null);
         fetchMessages();
       } else {
-        alert('Failed to update message');
+        console.error('Failed to update message');
       }
     } catch (err) {
-      alert('An error occurred');
+      console.error('An error occurred', err);
     }
   };
 
   const handleCancelMessage = async (rowIndex: number) => {
-    if (!confirm('Are you sure you want to cancel this message?')) return;
     try {
       const res = await fetch(`/api/messages/${rowIndex}`, { method: 'DELETE' });
       if (res.ok) {
         fetchMessages();
       } else {
-        alert('Failed to cancel message');
+        console.error('Failed to cancel message');
       }
     } catch (err) {
-      alert('An error occurred');
+      console.error('An error occurred', err);
     }
   };
 
@@ -1355,15 +1354,13 @@ export default function Admin() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          {msg.status === 'Queued' && (
-                            <button 
-                              onClick={() => handleCancelMessage(msg.rowIndex)}
-                              className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Cancel Message"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button 
+                            onClick={() => handleCancelMessage(msg.rowIndex)}
+                            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Cancel Message"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1698,6 +1695,17 @@ export default function Admin() {
                         setSettings(newSettings);
                       }}
                       className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1a202c] bg-slate-50 focus:bg-white transition-colors min-h-[100px] text-sm"
+                    />
+                  ) : setting.key.includes('_enabled') ? (
+                    <input 
+                      type="checkbox"
+                      checked={setting.value === 'true'}
+                      onChange={e => {
+                        const newSettings = [...settings];
+                        newSettings[idx].value = e.target.checked ? 'true' : 'false';
+                        setSettings(newSettings);
+                      }}
+                      className="w-6 h-6 rounded border-slate-200 text-[#1a202c] focus:ring-[#1a202c]"
                     />
                   ) : (
                     <input 

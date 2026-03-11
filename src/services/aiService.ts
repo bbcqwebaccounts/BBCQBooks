@@ -35,7 +35,7 @@ export async function augmentBookDataWithAI(isbn: string, initialData: any) {
     prompt += `Return the result as JSON.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -109,7 +109,7 @@ export async function augmentSingleFieldWithAI(field: string, bookData: any) {
     }
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-preview',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
