@@ -147,7 +147,7 @@ export async function createDatedBackup() {
     backupForm.append('metadata', new Blob([JSON.stringify(backupMetadata)], { type: 'application/json' }));
     backupForm.append('file', new Blob([localJson], { type: 'application/json' }));
 
-    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: backupForm
@@ -217,7 +217,7 @@ async function syncWithDrive() {
     }
 
     // 1. Find the file
-    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive`, {
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
@@ -243,7 +243,7 @@ async function syncWithDrive() {
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', new Blob([localJson], { type: 'application/json' }));
 
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=multipart`, {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=multipart&supportsAllDrives=true`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${accessToken}` },
         body: form
@@ -263,7 +263,7 @@ async function syncWithDrive() {
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', new Blob([localJson], { type: 'application/json' }));
 
-      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
         body: form
@@ -305,7 +305,7 @@ async function syncWithDrive() {
         backupForm.append('metadata', new Blob([JSON.stringify(backupMetadata)], { type: 'application/json' }));
         backupForm.append('file', new Blob([localJson], { type: 'application/json' }));
 
-        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
           body: backupForm
@@ -361,7 +361,7 @@ export async function downloadFromDrive() {
       query += ` and '${folderId}' in parents`;
     }
 
-    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive`, {
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
@@ -378,7 +378,7 @@ export async function downloadFromDrive() {
     const file = searchData.files?.[0];
 
     if (file) {
-      const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+      const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       const remoteData = await fileRes.json();

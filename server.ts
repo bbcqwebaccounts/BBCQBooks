@@ -53,7 +53,9 @@ app.get("/api/drive/download", async (req, res) => {
     const searchRes = await driveClient.files.list({
       q: query,
       spaces: 'drive',
-      fields: 'files(id, name)'
+      fields: 'files(id, name)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
     });
 
     const file = searchRes.data.files?.[0];
@@ -64,7 +66,8 @@ app.get("/api/drive/download", async (req, res) => {
 
     const fileRes = await driveClient.files.get({
       fileId: file.id,
-      alt: 'media'
+      alt: 'media',
+      supportsAllDrives: true
     }, { responseType: 'json' });
 
     res.json(fileRes.data);
@@ -89,7 +92,9 @@ app.post("/api/drive/upload", async (req, res) => {
     const searchRes = await driveClient.files.list({
       q: query,
       spaces: 'drive',
-      fields: 'files(id, name)'
+      fields: 'files(id, name)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
     });
 
     const file = searchRes.data.files?.[0];
@@ -102,7 +107,8 @@ app.post("/api/drive/upload", async (req, res) => {
     if (file) {
       await driveClient.files.update({
         fileId: file.id,
-        media: media
+        media: media,
+        supportsAllDrives: true
       });
       res.json({ success: true, message: "Updated existing file in Drive." });
     } else {
@@ -116,7 +122,8 @@ app.post("/api/drive/upload", async (req, res) => {
       await driveClient.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id'
+        fields: 'id',
+        supportsAllDrives: true
       });
       res.json({ success: true, message: "Created new file in Drive." });
     }
@@ -154,7 +161,8 @@ app.post("/api/drive/backup", async (req, res) => {
     await driveClient.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id'
+      fields: 'id',
+      supportsAllDrives: true
     });
     
     res.json({ success: true, message: `Created backup file: ${backupFileName}` });
