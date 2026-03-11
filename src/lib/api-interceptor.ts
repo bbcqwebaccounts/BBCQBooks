@@ -46,63 +46,6 @@ Object.defineProperty(window, 'fetch', {
       try {
         const safeTab = `'${sheetTab}'`;
         const encodedTab = encodeURIComponent(safeTab);
-        if (path === '/api/messages/create-sheet' && method === 'POST') {
-          const res = await originalFetch('https://sheets.googleapis.com/v4/spreadsheets', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              properties: {
-                title: 'Library SMS Logs'
-              },
-              sheets: [
-                {
-                  properties: {
-                    title: 'Messages'
-                  },
-                  data: [
-                    {
-                      startRow: 0,
-                      startColumn: 0,
-                      rowData: [
-                        {
-                          values: [
-                            { userEnteredValue: { stringValue: 'Log Time' } },
-                            { userEnteredValue: { stringValue: 'First Name' } },
-                            { userEnteredValue: { stringValue: 'Surname' } },
-                            { userEnteredValue: { stringValue: 'Phone' } },
-                            { userEnteredValue: { stringValue: 'Email' } },
-                            { userEnteredValue: { stringValue: 'Scheduled Time' } },
-                            { userEnteredValue: { stringValue: 'Message' } },
-                            { userEnteredValue: { stringValue: 'Status' } },
-                            { userEnteredValue: { stringValue: 'Batch ID' } }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            })
-          });
-          
-          if (!res.ok) {
-            const errBody = await res.text();
-            console.error("Failed to create sheet:", res.status, errBody);
-            throw new Error(`Failed to create Google Sheet: ${res.statusText}`);
-          }
-          
-          const data = await res.json();
-          const newSheetId = data.spreadsheetId;
-          
-          // Update the setting in the database
-          db.updateSetting('sms_google_sheet_id', newSheetId);
-          db.updateSetting('sms_google_sheet_tab', 'Messages');
-          
-          return jsonResponse({ success: true, sheetId: newSheetId });
-        }
 
         if (path === '/api/messages' && method === 'GET') {
           const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
