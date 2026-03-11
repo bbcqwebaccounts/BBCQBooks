@@ -62,7 +62,7 @@ Object.defineProperty(window, 'fetch', {
         const encodedTab = encodeURIComponent(safeTab);
 
         if (path === '/api/messages' && method === 'GET') {
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
           await handleGoogleSheetsError(res);
@@ -84,6 +84,7 @@ Object.defineProperty(window, 'fetch', {
           }));
 
           const validMessages = messages.filter((msg: any) => 
+            msg.batchId && msg.batchId.startsWith('Library') &&
             msg.phone && 
             msg.phone.toLowerCase() !== 'phone' && 
             msg.scheduledTime && 
@@ -99,7 +100,7 @@ Object.defineProperty(window, 'fetch', {
           const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = body;
           const logTime = new Date().toLocaleString();
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I:append?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J:append?valueInputOption=USER_ENTERED`, {
             method: 'POST',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -118,7 +119,7 @@ Object.defineProperty(window, 'fetch', {
           const body = JSON.parse(init?.body as string);
           const { scheduledTime, message, status } = body;
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!F${rowIndex}:H${rowIndex}?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!G${rowIndex}:I${rowIndex}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -135,7 +136,7 @@ Object.defineProperty(window, 'fetch', {
         if (path.match(/^\/api\/messages\/\d+$/) && method === 'DELETE') {
           const rowIndex = path.split('/').pop();
           
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!H${rowIndex}?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!I${rowIndex}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -154,7 +155,7 @@ Object.defineProperty(window, 'fetch', {
           const { batchIds } = body;
           if (!batchIds || !batchIds.length) return jsonResponse({ success: true });
 
-          const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:I`, {
+          const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
           await handleGoogleSheetsError(getRes);
@@ -169,7 +170,7 @@ Object.defineProperty(window, 'fetch', {
             
             if (batchIds.includes(batchId) && status === 'Queued') {
               dataToUpdate.push({
-                range: `${safeTab}!H${i + 1}`,
+                range: `${safeTab}!I${i + 1}`,
                 values: [['Cancelled']]
               });
             }
