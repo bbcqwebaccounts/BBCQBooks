@@ -427,6 +427,7 @@ Object.defineProperty(window, 'fetch', {
 
           extended.push({
             ...updated,
+            new_due_date: updated.due_date,
             title,
             sms_scheduled_time: reminderEnabled ? scheduledTimeStr : null,
             sms_message: reminderEnabled ? message : null

@@ -262,7 +262,11 @@ export default function ExtendLoan() {
                   {results.map((r: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
                       <span className="text-emerald-800 font-medium">Loan #{r.id}</span>
-                      <span className="text-emerald-900 font-bold">{new Date(r.new_due_date).toLocaleDateString()}</span>
+                      <span className="text-emerald-900 font-bold">
+                        {r.new_due_date && !isNaN(new Date(r.new_due_date).getTime()) 
+                          ? new Date(r.new_due_date).toLocaleDateString() 
+                          : 'Invalid Date'}
+                      </span>
                     </div>
                   ))}
                 </div>

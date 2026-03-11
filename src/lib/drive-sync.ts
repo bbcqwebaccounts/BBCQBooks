@@ -383,7 +383,7 @@ export async function uploadImageToDrive(base64Data: string, filename: string): 
     const fileId = data.id;
     
     // Make the file publicly readable so it can be displayed in an img tag
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
+    const permRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
       method: 'POST',
       headers: { 
         Authorization: `Bearer ${accessToken}`,
@@ -395,8 +395,14 @@ export async function uploadImageToDrive(base64Data: string, filename: string): 
       })
     });
 
+    if (!permRes.ok) {
+      const errorData = await permRes.json();
+      console.error('Failed to make file public:', errorData);
+      throw new Error(`Failed to make file public: ${permRes.statusText}`);
+    }
+
     // Return the web view link or construct a direct link
-    return `https://drive.google.com/uc?id=${fileId}`;
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
   } catch (err) {
     console.error('Image upload error:', err);
     return null;
