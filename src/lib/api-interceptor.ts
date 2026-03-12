@@ -98,24 +98,23 @@ Object.defineProperty(window, 'fetch', {
 
           const messages = rows.map((row: any[], index: number) => ({
             rowIndex: index + 1,
-            logTime: row[0] || '',
-            firstName: row[1] || '',
-            surname: row[2] || '',
-            phone: row[3] || '',
-            email: row[4] || '',
-            scheduledTime: row[5] || '',
-            message: row[6] || '',
-            status: row[7] || '',
-            batchId: row[8] || ''
+            logTime: row[0] != null ? String(row[0]) : '',
+            firstName: row[1] != null ? String(row[1]) : '',
+            surname: row[2] != null ? String(row[2]) : '',
+            phone: row[3] != null ? String(row[3]) : '',
+            email: row[4] != null ? String(row[4]) : '',
+            scheduledTime: row[5] != null ? String(row[5]) : '',
+            message: row[6] != null ? String(row[6]) : '',
+            status: row[7] != null ? String(row[7]) : '',
+            batchId: row[8] != null ? String(row[8]) : ''
           }));
 
           const validMessages = messages.filter((msg: any) => 
-            msg.batchId && msg.batchId.startsWith('Library') &&
             msg.phone && 
-            msg.phone.toLowerCase() !== 'phone' && 
+            String(msg.phone).toLowerCase() !== 'phone' && 
             msg.scheduledTime && 
-            msg.scheduledTime.toLowerCase() !== 'scheduled send date and time' &&
-            msg.scheduledTime.toLowerCase() !== 'scheduled time'
+            String(msg.scheduledTime).toLowerCase() !== 'scheduled send date and time' &&
+            String(msg.scheduledTime).toLowerCase() !== 'scheduled time'
           );
           
           return jsonResponse(validMessages);
@@ -129,6 +128,7 @@ Object.defineProperty(window, 'fetch', {
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
               method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({
                 action: 'addMessage',
                 sheetId,
@@ -162,6 +162,7 @@ Object.defineProperty(window, 'fetch', {
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
               method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({
                 action: 'updateMessage',
                 sheetId,
@@ -194,6 +195,7 @@ Object.defineProperty(window, 'fetch', {
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
               method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({
                 action: 'cancelMessage',
                 sheetId,
@@ -227,6 +229,7 @@ Object.defineProperty(window, 'fetch', {
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
               method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({
                 action: 'cancelByBatch',
                 sheetId,
