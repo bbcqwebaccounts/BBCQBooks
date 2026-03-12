@@ -110,11 +110,9 @@ Object.defineProperty(window, 'fetch', {
           }));
 
           const validMessages = messages.filter((msg: any) => 
-            msg.phone && 
-            String(msg.phone).toLowerCase() !== 'phone' && 
-            msg.scheduledTime && 
-            String(msg.scheduledTime).toLowerCase() !== 'scheduled send date and time' &&
-            String(msg.scheduledTime).toLowerCase() !== 'scheduled time'
+            (msg.phone || msg.scheduledTime || msg.message) &&
+            String(msg.logTime).toLowerCase() !== 'log time' &&
+            String(msg.logTime).toLowerCase() !== 'logtime'
           );
           
           return jsonResponse(validMessages);

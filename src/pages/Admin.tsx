@@ -1313,7 +1313,7 @@ export default function Admin() {
                   onChange={(e) => setShowSentMessages(e.target.checked)}
                   className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                Show Sent Messages
+                Show All Messages
               </label>
               {messagesError ? (
                 <div className="flex items-center gap-2 text-rose-600 text-sm font-medium bg-rose-50 px-3 py-1.5 rounded-lg" title={messagesError}>
@@ -1365,12 +1365,16 @@ export default function Admin() {
                       </div>
                     </td>
                   </tr>
-                ) : messages.filter(m => m.status === 'Queued' || (showSentMessages && m.status.startsWith('Sent'))).length === 0 ? (
+                ) : messages.filter(m => m.status === 'Queued' || showSentMessages).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">No messages found.</td>
+                    <td colSpan={5} className="p-8 text-center text-slate-500">
+                      {messages.length > 0 
+                        ? `Found ${messages.length} messages in sheet, but none are 'Queued'. Check 'Show All Messages' to view them.` 
+                        : "No messages found in the Google Sheet."}
+                    </td>
                   </tr>
                 ) : (
-                  getSortedData(messages.filter(m => m.status === 'Queued' || (showSentMessages && m.status.startsWith('Sent'))), 'messages').map(msg => (
+                  getSortedData(messages.filter(m => m.status === 'Queued' || showSentMessages), 'messages').map(msg => (
                     <tr key={msg.rowIndex} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-sm font-medium text-slate-900 whitespace-nowrap">
                         {msg.scheduledTime}
