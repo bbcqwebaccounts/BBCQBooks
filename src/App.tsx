@@ -11,6 +11,7 @@ import Borrow from './pages/Borrow';
 import Return from './pages/Return';
 import Admin from './pages/Admin';
 import ExtendLoan from './pages/ExtendLoan';
+import PrintableInstructions from './pages/PrintableInstructions';
 import { LOGO_URL, CHURCH_NAME } from './constants';
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -126,18 +127,23 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Layout>
-        <div key={dbVersion}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/borrow" element={<Borrow />} />
-            <Route path="/return" element={<Return />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/extend" element={<ExtendLoan />} />
-            <Route path="/extend/:token" element={<ExtendLoan />} />
-          </Routes>
-        </div>
-      </Layout>
+      <Routes>
+        <Route path="/admin/print-instructions" element={<PrintableInstructions />} />
+        <Route path="*" element={
+          <Layout>
+            <div key={dbVersion}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/borrow" element={<Borrow />} />
+                <Route path="/return" element={<Return />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/extend" element={<ExtendLoan />} />
+                <Route path="/extend/:token" element={<ExtendLoan />} />
+              </Routes>
+            </div>
+          </Layout>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }

@@ -17,6 +17,7 @@ interface Book {
   category: string | null;
   shelf_number: string | null;
   featured: boolean;
+  is_dvd?: boolean;
   book_code: string | null;
   next_due_date: string | null;
 }
@@ -331,7 +332,7 @@ export default function Home() {
                 <CoverImage 
                   cover_url={book.cover_url || undefined} 
                   title={book.title} 
-                  is_dvd={!!(book as any).is_dvd} 
+                  is_dvd={!!book.is_dvd} 
                   className="w-full h-full object-cover rounded-md shadow-sm"
                 />
                 {((book.status === 'available' && book.available_copies <= 0) || book.status === 'unavailable') && (
@@ -393,7 +394,7 @@ export default function Home() {
                           <CoverImage 
                             cover_url={book.cover_url || undefined} 
                             title={book.title} 
-                            is_dvd={!!(book as any).is_dvd} 
+                            is_dvd={!!book.is_dvd} 
                             className="w-full h-full object-cover"
                           />
                           {((book.status === 'available' && book.available_copies <= 0) || book.status === 'unavailable') && (

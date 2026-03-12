@@ -63,6 +63,7 @@ interface Book {
   category: string | null;
   shelf_number: string | null;
   featured: boolean;
+  is_dvd?: boolean;
   book_code: string | null;
 }
 
@@ -229,6 +230,8 @@ export default function Admin() {
         setCategory(bookToEdit.category || '');
         setShelfNumber(bookToEdit.shelf_number || '');
         setBookCode(bookToEdit.book_code || '');
+        setFeatured(bookToEdit.featured || false);
+        setIsDvd(!!bookToEdit.is_dvd);
         if (bookToEdit.isbn.startsWith('LIB-')) {
           setGeneratedBarcode(bookToEdit.isbn);
         } else {
@@ -795,6 +798,7 @@ export default function Admin() {
     setShelfNumber(book.shelf_number || '');
     setBookCode(book.book_code || '');
     setFeatured(book.featured || false);
+    setIsDvd(!!book.is_dvd);
     setActiveTab('add');
     setAddMessage({ type: '', text: '' });
   };
@@ -1233,7 +1237,7 @@ export default function Admin() {
                           <CoverImage 
                             cover_url={book.cover_url || undefined} 
                             title={book.title} 
-                            is_dvd={!!(book as any).is_dvd} 
+                            is_dvd={!!book.is_dvd} 
                           />
                         </div>
                         <div>
@@ -1648,6 +1652,27 @@ export default function Admin() {
                     <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Active Loans</p>
                     <p className="text-2xl font-bold text-slate-900">{loans.filter(l => !l.return_date).length}</p>
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-slate-100">
+                <div className="flex items-center gap-3 text-slate-400 mb-4">
+                  <ScanLine className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Printable Materials</span>
+                </div>
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h4 className="font-bold text-slate-900 mb-2">Library Instructions Poster</h4>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Print a beautiful A4 poster with a QR code and instructions on how to use the self-service library.
+                  </p>
+                  <Link 
+                    to="/admin/print-instructions" 
+                    target="_blank"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#1a202c] text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                  >
+                    <ScanLine className="w-5 h-5" />
+                    Open Printable Poster
+                  </Link>
                 </div>
               </div>
             </div>

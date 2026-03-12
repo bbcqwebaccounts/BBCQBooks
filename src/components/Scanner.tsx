@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, CameraOff } from 'lucide-react';
+import ScannerInstruction from './ScannerInstruction';
 
 interface ScannerProps {
   onScan: (decodedText: string) => void;
@@ -118,30 +119,33 @@ export default function Scanner({ onScan }: ScannerProps) {
       )}
 
       {!isInitializing && !error && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Viewfinder Cutout Overlay - Very light dimming */}
-          <div className="absolute inset-0 bg-black/10">
-            <div 
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[180px] bg-transparent rounded-xl ring-[999px] ring-black/20"
-              style={{ boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.9)' }}
-            >
-              {/* Corner Accents - Larger and brighter */}
-              <div className="absolute -top-1 -left-1 w-10 h-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-              <div className="absolute -top-1 -right-1 w-10 h-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-              <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-              <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-4 border-r-4 border-emerald-400 rounded-br-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-              
-              {/* Scanning Line - Brighter */}
-              <div className="absolute top-1/2 left-2 right-2 h-[2px] bg-emerald-300 shadow-[0_0_15px_rgba(110,231,183,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
+        <>
+          <ScannerInstruction type="barcode" />
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Viewfinder Cutout Overlay - Very light dimming */}
+            <div className="absolute inset-0 bg-black/10">
+              <div 
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[180px] bg-transparent rounded-xl ring-[999px] ring-black/20"
+                style={{ boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.9)' }}
+              >
+                {/* Corner Accents - Larger and brighter */}
+                <div className="absolute -top-1 -left-1 w-10 h-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                <div className="absolute -top-1 -right-1 w-10 h-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-4 border-r-4 border-emerald-400 rounded-br-lg shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                
+                {/* Scanning Line - Brighter */}
+                <div className="absolute top-1/2 left-2 right-2 h-[2px] bg-emerald-300 shadow-[0_0_15px_rgba(110,231,183,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
+              </div>
+            </div>
+
+            <div className="absolute bottom-6 left-0 right-0 text-center">
+              <p className="text-white font-bold text-sm bg-emerald-600/90 inline-block px-4 py-1.5 rounded-full shadow-lg backdrop-blur-md border border-emerald-400/30">
+                Align barcode in frame
+              </p>
             </div>
           </div>
-
-          <div className="absolute bottom-6 left-0 right-0 text-center">
-            <p className="text-white font-bold text-sm bg-emerald-600/90 inline-block px-4 py-1.5 rounded-full shadow-lg backdrop-blur-md border border-emerald-400/30">
-              Align barcode in frame
-            </p>
-          </div>
-        </div>
+        </>
       )}
 
       {hasFlash && !isInitializing && !error && (
