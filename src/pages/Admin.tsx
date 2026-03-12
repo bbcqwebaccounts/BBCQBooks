@@ -1811,6 +1811,88 @@ export default function Admin() {
                       The name of the tab in the Google Sheet where SMS messages are logged (e.g., "Log").
                     </p>
                   )}
+                  {setting.key === 'sms_google_apps_script_url' && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-[10px] text-slate-400">
+                        <strong>Optional but Recommended:</strong> To ensure SMS reminders sync 24/7 without needing to be logged in, deploy a Google Apps Script and paste the URL here.
+                      </p>
+                      <details className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <summary className="cursor-pointer font-medium text-slate-800">Show Google Apps Script Code</summary>
+                        <div className="mt-2 space-y-2">
+                          <p>1. Go to <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">script.google.com</a> and create a new project.</p>
+                          <p>2. Paste the following code into <code>Code.gs</code>:</p>
+                          <pre className="bg-slate-800 text-slate-200 p-2 rounded overflow-x-auto text-[10px] leading-tight">
+{`function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var action = data.action;
+  var sheetId = data.sheetId;
+  var sheetTab = data.sheetTab;
+  
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetTab);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify({error: "Sheet not found"})).setMimeType(ContentService.MimeType.JSON);
+  
+  if (action === 'addMessage') {
+    sheet.appendRow(data.values[0]);
+    return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === 'updateMessage') {
+    var rowIndex = parseInt(data.rowIndex);
+    var range = sheet.getRange(rowIndex, 6, 1, 3);
+    range.setValues(data.values);
+    return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === 'cancelMessage') {
+    var rowIndex = parseInt(data.rowIndex);
+    var range = sheet.getRange(rowIndex, 8);
+    range.setValue('Cancelled');
+    return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  if (action === 'cancelByBatch') {
+    var batchIds = data.batchIds;
+    var dataRange = sheet.getDataRange();
+    var values = dataRange.getValues();
+    
+    for (var i = 1; i < values.length; i++) {
+      var status = values[i][7];
+      var batchId = values[i][8];
+      
+      if (batchIds.indexOf(batchId) !== -1 && status === 'Queued') {
+        sheet.getRange(i + 1, 8).setValue('Cancelled');
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({error: "Invalid action"})).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  var action = e.parameter.action;
+  var sheetId = e.parameter.sheetId;
+  var sheetTab = e.parameter.sheetTab;
+  
+  var sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetTab);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify({error: "Sheet not found"})).setMimeType(ContentService.MimeType.JSON);
+  
+  if (action === 'getMessages') {
+    var dataRange = sheet.getDataRange();
+    var values = dataRange.getValues();
+    return ContentService.createTextOutput(JSON.stringify({values: values})).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({error: "Invalid action"})).setMimeType(ContentService.MimeType.JSON);
+}`}
+                          </pre>
+                          <p>3. Click <strong>Deploy &gt; New deployment</strong>. Select type <strong>Web app</strong>.</p>
+                          <p>4. Execute as: <strong>Me</strong>. Who has access: <strong>Anyone</strong>.</p>
+                          <p>5. Copy the Web app URL and paste it into the input above.</p>
+                        </div>
+                      </details>
+                    </div>
+                  )}
                   {setting.key === 'max_borrow_weeks' && (
                     <p className="mt-2 text-[10px] text-slate-400">
                       The maximum number of weeks a book can be borrowed. Set to 0 or leave empty for unlimited.

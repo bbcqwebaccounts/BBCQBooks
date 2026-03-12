@@ -58,12 +58,7 @@ export default function ExtendLoan() {
 
   const canExtend = (loan: any) => {
     if (!maxBorrowWeeks) return true;
-    let extendDays = 7;
-    if (loan.original_due_date && loan.borrow_date) {
-      const borrowDate = new Date(loan.borrow_date);
-      const originalDueDate = new Date(loan.original_due_date);
-      extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
-    }
+    const extendDays = 7;
     const borrowDate = new Date(loan.borrow_date);
     const newDueDate = new Date(loan.due_date);
     newDueDate.setDate(newDueDate.getDate() + extendDays);

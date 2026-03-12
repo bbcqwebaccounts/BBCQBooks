@@ -60,6 +60,7 @@ Object.defineProperty(window, 'fetch', {
     if (path.startsWith('/api/messages')) {
       const sheetId = db.getSetting('sms_google_sheet_id') || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
       const sheetTab = db.getSetting('sms_google_sheet_tab') || 'Log';
+      const scriptUrl = db.getSetting('sms_google_apps_script_url');
       const savedTokenStr = db.getSetting('google_oauth_tokens');
       let accessToken = null;
       if (savedTokenStr) {
@@ -69,8 +70,8 @@ Object.defineProperty(window, 'fetch', {
         } catch (e) {}
       }
 
-      if (!accessToken) {
-        return jsonResponse({ error: "Google Sheets is not configured. Please connect Google Drive in Settings." }, 500);
+      if (!accessToken && !scriptUrl) {
+        return jsonResponse({ error: "Google Sheets is not configured. Please connect Google Drive or set Apps Script URL in Settings." }, 500);
       }
 
       try {
@@ -78,12 +79,21 @@ Object.defineProperty(window, 'fetch', {
         const encodedTab = encodeURIComponent(safeTab);
 
         if (path === '/api/messages' && method === 'GET') {
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
-          await handleGoogleSheetsError(res);
-          const data = await res.json();
-          const rows = data.values || [];
+          let rows = [];
+          if (scriptUrl) {
+            const res = await originalFetch(`${scriptUrl}?action=getMessages&sheetId=${sheetId}&sheetTab=${encodeURIComponent(sheetTab)}`);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            rows = data.values || [];
+          } else {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            await handleGoogleSheetsError(res);
+            const data = await res.json();
+            rows = data.values || [];
+          }
+          
           if (rows.length === 0) return jsonResponse([]);
 
           const messages = rows.map((row: any[], index: number) => ({
@@ -116,17 +126,31 @@ Object.defineProperty(window, 'fetch', {
           const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = body;
           const logTime = new Date().toLocaleString();
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-            method: 'POST',
-            headers: { 
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
-            })
-          });
-          await handleGoogleSheetsError(res);
+          if (scriptUrl) {
+            const res = await originalFetch(scriptUrl, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'addMessage',
+                sheetId,
+                sheetTab,
+                values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+              })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+          } else {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+              method: 'POST',
+              headers: { 
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+              })
+            });
+            await handleGoogleSheetsError(res);
+          }
           return jsonResponse({ success: true });
         }
 
@@ -135,34 +159,63 @@ Object.defineProperty(window, 'fetch', {
           const body = JSON.parse(init?.body as string);
           const { scheduledTime, message, status } = body;
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!F${rowIndex}:H${rowIndex}?valueInputOption=USER_ENTERED`, {
-            method: 'PUT',
-            headers: { 
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              values: [[scheduledTime, message, status]]
-            })
-          });
-          await handleGoogleSheetsError(res);
+          if (scriptUrl) {
+            const res = await originalFetch(scriptUrl, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'updateMessage',
+                sheetId,
+                sheetTab,
+                rowIndex,
+                values: [[scheduledTime, message, status]]
+              })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+          } else {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!F${rowIndex}:H${rowIndex}?valueInputOption=USER_ENTERED`, {
+              method: 'PUT',
+              headers: { 
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                values: [[scheduledTime, message, status]]
+              })
+            });
+            await handleGoogleSheetsError(res);
+          }
           return jsonResponse({ success: true });
         }
 
         if (path.match(/^\/api\/messages\/\d+$/) && method === 'DELETE') {
           const rowIndex = path.split('/').pop();
           
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!H${rowIndex}?valueInputOption=USER_ENTERED`, {
-            method: 'PUT',
-            headers: { 
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              values: [['Cancelled']]
-            })
-          });
-          await handleGoogleSheetsError(res);
+          if (scriptUrl) {
+            const res = await originalFetch(scriptUrl, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'cancelMessage',
+                sheetId,
+                sheetTab,
+                rowIndex
+              })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+          } else {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!H${rowIndex}?valueInputOption=USER_ENTERED`, {
+              method: 'PUT',
+              headers: { 
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                values: [['Cancelled']]
+              })
+            });
+            await handleGoogleSheetsError(res);
+          }
           return jsonResponse({ success: true });
         }
 
@@ -171,43 +224,54 @@ Object.defineProperty(window, 'fetch', {
           const { batchIds } = body;
           if (!batchIds || !batchIds.length) return jsonResponse({ success: true });
 
-          const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
-          await handleGoogleSheetsError(getRes);
-          const data = await getRes.json();
-          const rows = data.values || [];
-          
-          const dataToUpdate = [];
-          for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const status = row[7];
-            const batchId = row[8];
-            
-            console.log('Checking row:', i, 'batchId:', batchId, 'status:', status);
-            
-            if (batchIds.includes(batchId) && status === 'Queued') {
-              console.log('Found reminder to cancel:', batchId, status);
-              dataToUpdate.push({
-                range: `${safeTab}!H${i + 1}`,
-                values: [['Cancelled']]
-              });
-            }
-          }
-
-          if (dataToUpdate.length > 0) {
-            const updateRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+          if (scriptUrl) {
+            const res = await originalFetch(scriptUrl, {
               method: 'POST',
-              headers: { 
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-              },
               body: JSON.stringify({
-                valueInputOption: 'USER_ENTERED',
-                data: dataToUpdate
+                action: 'cancelByBatch',
+                sheetId,
+                sheetTab,
+                batchIds
               })
             });
-            await handleGoogleSheetsError(updateRes);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+          } else {
+            const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            await handleGoogleSheetsError(getRes);
+            const data = await getRes.json();
+            const rows = data.values || [];
+            
+            const dataToUpdate = [];
+            for (let i = 1; i < rows.length; i++) {
+              const row = rows[i];
+              const status = row[7];
+              const batchId = row[8];
+              
+              if (batchIds.includes(batchId) && status === 'Queued') {
+                dataToUpdate.push({
+                  range: `${safeTab}!H${i + 1}`,
+                  values: [['Cancelled']]
+                });
+              }
+            }
+
+            if (dataToUpdate.length > 0) {
+              const updateRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+                method: 'POST',
+                headers: { 
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  valueInputOption: 'USER_ENTERED',
+                  data: dataToUpdate
+                })
+              });
+              await handleGoogleSheetsError(updateRes);
+            }
           }
           return jsonResponse({ success: true });
         }
@@ -411,12 +475,7 @@ Object.defineProperty(window, 'fetch', {
       for (const token of body.tokens) {
         const loan = db.getLoanByToken(token);
         if (loan) {
-          let extendDays = 7;
-          if (loan.original_due_date && loan.borrow_date) {
-            const borrowDate = new Date(loan.borrow_date);
-            const originalDueDate = new Date(loan.original_due_date);
-            extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
-          }
+          const extendDays = 7;
 
           const newDueDate = new Date(loan.due_date);
           newDueDate.setDate(newDueDate.getDate() + extendDays);
@@ -501,12 +560,7 @@ Object.defineProperty(window, 'fetch', {
       const id = parseInt(path.split('/')[3]);
       const loan = db.getLoanById(id);
       if (loan) {
-        let extendDays = 7;
-        if (loan.original_due_date && loan.borrow_date) {
-          const borrowDate = new Date(loan.borrow_date);
-          const originalDueDate = new Date(loan.original_due_date);
-          extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
-        }
+        const extendDays = 7;
 
         const newDueDate = new Date(loan.due_date);
         newDueDate.setDate(newDueDate.getDate() + extendDays);

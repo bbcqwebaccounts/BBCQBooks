@@ -61,6 +61,7 @@ const defaultSettings: Setting[] = [
   { key: 'sms_reminder_enabled', value: "true" },
   { key: 'sms_google_sheet_id', value: "1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y" },
   { key: 'sms_google_sheet_tab', value: "Log" },
+  { key: 'sms_google_apps_script_url', value: "" },
   { key: 'ADMIN_PASSWORD', value: "bbcqbooks" },
   { key: 'max_borrow_weeks', value: "4" },
   { key: 'google_client_id', value: import.meta.env.VITE_GOOGLE_CLIENT_ID || "537860369463-cbstki1j76jbg666an30gb5kcnivn860.apps.googleusercontent.com" },
