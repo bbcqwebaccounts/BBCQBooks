@@ -328,11 +328,12 @@ export default function Home() {
               className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 flex flex-col hover:shadow-md transition-all cursor-pointer group"
             >
               <div className="aspect-[2/3] bg-slate-100 relative flex items-center justify-center p-4">
-                {book.cover_url ? (
-                  <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover rounded-md shadow-sm" referrerPolicy="no-referrer" />
-                ) : (
-                  <BookIcon className="w-16 h-16 text-slate-300" />
-                )}
+                <CoverImage 
+                  cover_url={book.cover_url || undefined} 
+                  title={book.title} 
+                  is_dvd={!!(book as any).is_dvd} 
+                  className="w-full h-full object-cover rounded-md shadow-sm"
+                />
                 {((book.status === 'available' && book.available_copies <= 0) || book.status === 'unavailable') && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex items-center justify-center p-4 text-center">
                     <span className="text-xs font-bold text-slate-600 uppercase tracking-widest bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100">
@@ -389,11 +390,12 @@ export default function Home() {
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-10 bg-slate-100 rounded overflow-hidden flex-shrink-0 relative flex items-center justify-center">
-                          {book.cover_url ? (
-                            <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          ) : (
-                            <BookIcon className="w-3 h-3 text-slate-300" />
-                          )}
+                          <CoverImage 
+                            cover_url={book.cover_url || undefined} 
+                            title={book.title} 
+                            is_dvd={!!(book as any).is_dvd} 
+                            className="w-full h-full object-cover"
+                          />
                           {((book.status === 'available' && book.available_copies <= 0) || book.status === 'unavailable') && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px]" />
                           )}

@@ -24,7 +24,7 @@ export default function CoverImage({ cover_url, title, is_dvd, className = "w-fu
         </div>
       )}
       {is_dvd && (
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
+        <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs font-black px-2.5 py-1 rounded-lg uppercase tracking-widest shadow-lg backdrop-blur-sm">
           DVD
         </div>
       )}
