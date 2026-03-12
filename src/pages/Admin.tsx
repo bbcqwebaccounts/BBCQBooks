@@ -1836,20 +1836,21 @@ export default function Admin() {
   if (!sheet) return ContentService.createTextOutput(JSON.stringify({error: "Sheet not found"})).setMimeType(ContentService.MimeType.JSON);
   
   if (action === 'addMessage') {
-    sheet.appendRow(data.values[0]);
+    var rowData = [''].concat(data.values[0]);
+    sheet.appendRow(rowData);
     return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
   }
   
   if (action === 'updateMessage') {
     var rowIndex = parseInt(data.rowIndex);
-    var range = sheet.getRange(rowIndex, 6, 1, 3);
+    var range = sheet.getRange(rowIndex, 7, 1, 3);
     range.setValues(data.values);
     return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
   }
   
   if (action === 'cancelMessage') {
     var rowIndex = parseInt(data.rowIndex);
-    var range = sheet.getRange(rowIndex, 8);
+    var range = sheet.getRange(rowIndex, 9);
     range.setValue('Cancelled');
     return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
   }
@@ -1860,11 +1861,11 @@ export default function Admin() {
     var values = dataRange.getValues();
     
     for (var i = 1; i < values.length; i++) {
-      var status = values[i][7];
-      var batchId = values[i][8];
+      var status = values[i][8];
+      var batchId = values[i][9];
       
       if (batchIds.indexOf(batchId) !== -1 && status === 'Queued') {
-        sheet.getRange(i + 1, 8).setValue('Cancelled');
+        sheet.getRange(i + 1, 9).setValue('Cancelled');
       }
     }
     return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);

@@ -96,17 +96,18 @@ Object.defineProperty(window, 'fetch', {
           
           if (rows.length === 0) return jsonResponse([]);
 
+          const offset = scriptUrl ? 1 : 0;
           const messages = rows.map((row: any[], index: number) => ({
             rowIndex: index + 1,
-            logTime: row[0] != null ? String(row[0]) : '',
-            firstName: row[1] != null ? String(row[1]) : '',
-            surname: row[2] != null ? String(row[2]) : '',
-            phone: row[3] != null ? String(row[3]) : '',
-            email: row[4] != null ? String(row[4]) : '',
-            scheduledTime: row[5] != null ? String(row[5]) : '',
-            message: row[6] != null ? String(row[6]) : '',
-            status: row[7] != null ? String(row[7]) : '',
-            batchId: row[8] != null ? String(row[8]) : ''
+            logTime: row[0 + offset] != null ? String(row[0 + offset]) : '',
+            firstName: row[1 + offset] != null ? String(row[1 + offset]) : '',
+            surname: row[2 + offset] != null ? String(row[2 + offset]) : '',
+            phone: row[3 + offset] != null ? String(row[3 + offset]) : '',
+            email: row[4 + offset] != null ? String(row[4 + offset]) : '',
+            scheduledTime: row[5 + offset] != null ? String(row[5 + offset]) : '',
+            message: row[6 + offset] != null ? String(row[6 + offset]) : '',
+            status: row[7 + offset] != null ? String(row[7 + offset]) : '',
+            batchId: row[8 + offset] != null ? String(row[8 + offset]) : ''
           }));
 
           const validMessages = messages.filter((msg: any) => 
