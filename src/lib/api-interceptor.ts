@@ -371,7 +371,7 @@ Object.defineProperty(window, 'fetch', {
           const message = template
             .replace('{name}', firstName)
             .replace('{title}', book.title)
-            .replace('{due_date}', dueDate.toLocaleDateString())
+            .replace('{due_date}', dueDate.toLocaleDateString('en-AU'))
             .replace('{url}', extensionUrl);
 
           newLoans.push({
@@ -438,7 +438,7 @@ Object.defineProperty(window, 'fetch', {
           const message = template
             .replace('{name}', firstName)
             .replace('{title}', title)
-            .replace('{due_date}', newDueDate.toLocaleDateString())
+            .replace('{due_date}', newDueDate.toLocaleDateString('en-AU'))
             .replace('{url}', extensionUrl);
 
           extended.push({
@@ -459,8 +459,17 @@ Object.defineProperty(window, 'fetch', {
       const isbn = path.split('/').pop()!;
       const book = db.getBookByIsbn(isbn);
       if (book) {
-        const activeLoans = db.getLoans().filter(l => l.book_id === book.id && !l.return_date);
-        return jsonResponse(activeLoans);
+        const activeLoan = db.getLoans().find(l => l.book_id === book.id && !l.return_date);
+        if (activeLoan) {
+          const otherLoans = db.getLoans().filter(l => 
+            !l.return_date && 
+            l.book_id !== book.id && 
+            l.user_name === activeLoan.user_name && 
+            l.user_phone === activeLoan.user_phone
+          );
+          const suggestedBooks = otherLoans.map(l => db.getBookById(l.book_id)).filter(Boolean);
+          return jsonResponse(suggestedBooks);
+        }
       }
       return jsonResponse([]);
     }
@@ -517,7 +526,7 @@ Object.defineProperty(window, 'fetch', {
         const message = template
           .replace('{name}', firstName)
           .replace('{title}', title)
-          .replace('{due_date}', newDueDate.toLocaleDateString())
+          .replace('{due_date}', newDueDate.toLocaleDateString('en-AU'))
           .replace('{url}', extensionUrl);
 
         return jsonResponse({
