@@ -1,9 +1,7 @@
 /// <reference types="vite/client" />
 import React, { useRef, useState } from 'react';
-import { Camera, Loader2, X } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react';
 import { GoogleGenAI, Type } from '@google/genai';
-import { motion, AnimatePresence } from 'motion/react';
-import { CoverInstructionGraphic } from './ScannerInstruction';
 
 interface CoverScannerProps {
   mode: 'match' | 'identify';
@@ -15,22 +13,7 @@ interface CoverScannerProps {
 
 export default function CoverScanner({ mode, onResult, onError, className = '', variant = 'default' }: CoverScannerProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showInstruction, setShowInstruction] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleButtonClick = () => {
-    // Show instruction first time, or always for large variant to be helpful
-    if (variant === 'large') {
-      setShowInstruction(true);
-    } else {
-      fileInputRef.current?.click();
-    }
-  };
-
-  const handleStartScanning = () => {
-    setShowInstruction(false);
-    fileInputRef.current?.click();
-  };
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,8 +29,8 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
         URL.revokeObjectURL(objectUrl);
         
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1600;
-        const MAX_HEIGHT = 1600;
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
         let width = img.width;
         let height = img.height;
 
@@ -73,7 +56,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
         }
         
         ctx.drawImage(img, 0, 0, width, height);
-        const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+        const base64Image = canvas.toDataURL('image/jpeg', 0.6);
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
         
         // Generate a smaller thumbnail for saving to the database to prevent QuotaExceededError
@@ -121,11 +104,8 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
           const ai = new GoogleGenAI({ apiKey });
 
           if (mode === 'match') {
-            const booksRes = await fetch('/api/books');
-            const books = await booksRes.json();
-            
             const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-3.1-flash-lite-preview',
               contents: {
                 parts: [
                   {
@@ -135,7 +115,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
                     }
                   },
                   {
-                    text: `Identify the book in this image. Then, find the best match from the following list of books in our library. Return ONLY a JSON object with the matching book's ISBN. If no book matches, return {"isbn": null}.\n\nLibrary books:\n${JSON.stringify(books)}`
+                    text: `Identify the book in this image. Return a JSON object with the title and author.`
                   }
                 ]
               },
@@ -144,10 +124,8 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
                 responseSchema: {
                   type: Type.OBJECT,
                   properties: {
-                    isbn: {
-                      type: Type.STRING,
-                      description: "The ISBN of the matching book, or null if not found."
-                    }
+                    title: { type: Type.STRING },
+                    author: { type: Type.STRING }
                   }
                 }
               }
@@ -167,11 +145,20 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
               throw e;
             }
             
-            if (result.isbn) {
-              const bookRes = await fetch(`/api/books/${result.isbn}`);
-              if (bookRes.ok) {
-                const book = await bookRes.json();
-                onResult({ match: true, book });
+            if (result.title) {
+              const booksRes = await fetch('/api/books');
+              const books = await booksRes.json();
+              
+              const searchTitle = result.title.toLowerCase().trim();
+              
+              // Find the best match locally
+              const match = books.find((b: any) => 
+                b.title.toLowerCase().includes(searchTitle) || 
+                searchTitle.includes(b.title.toLowerCase())
+              );
+              
+              if (match) {
+                onResult({ match: true, book: match });
               } else {
                 onResult({ match: false });
               }
@@ -286,7 +273,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
       {variant === 'large' ? (
         <button
           type="button"
-          onClick={handleButtonClick}
+          onClick={() => fileInputRef.current?.click()}
           disabled={isProcessing}
           className="w-full h-full bg-white border-2 border-dashed border-indigo-200 text-indigo-600 py-6 rounded-2xl hover:border-indigo-400 hover:text-indigo-700 transition-colors flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
         >
@@ -298,7 +285,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
       ) : (
         <button
           type="button"
-          onClick={handleButtonClick}
+          onClick={() => fileInputRef.current?.click()}
           disabled={isProcessing}
           className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 px-4 rounded-xl font-medium hover:bg-indigo-100 transition-colors disabled:opacity-50"
         >
@@ -315,51 +302,6 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
           )}
         </button>
       )}
-
-      <AnimatePresence>
-        {showInstruction && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowInstruction(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden p-6 text-center"
-            >
-              <button 
-                onClick={() => setShowInstruction(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="w-48 h-40 mx-auto mb-6 text-indigo-600">
-                <CoverInstructionGraphic />
-              </div>
-              
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Scan Book Cover</h3>
-              <p className="text-slate-600 mb-8">
-                For best results, position the entire front cover of the book within the camera frame. Ensure good lighting and avoid glare.
-              </p>
-              
-              <button
-                onClick={handleStartScanning}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                <Camera className="w-5 h-5" />
-                Open Camera
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 }
