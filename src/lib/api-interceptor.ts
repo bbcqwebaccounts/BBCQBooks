@@ -1,4 +1,5 @@
 import { db } from './db';
+import { isBackendConfigured } from './drive-sync';
 
 const originalFetch = window.fetch;
 
@@ -19,6 +20,21 @@ Object.defineProperty(window, 'fetch', {
     const url = new URL(urlStr, window.location.origin);
     const path = url.pathname;
     const method = init?.method || 'GET';
+
+    // If backend is configured, forward /api/messages to the server with sheet headers
+    if (path.startsWith('/api/messages') && isBackendConfigured) {
+      const sheetId = db.getSetting('sms_google_sheet_id') || '1_XWf2SDWptGWhcSO4rKiTiqx1W9QQ5neJMpZRmW7T4Y';
+      const sheetTab = db.getSetting('sms_google_sheet_tab') || 'Log';
+      
+      const newInit = { ...init };
+      newInit.headers = {
+        ...newInit.headers,
+        'x-sheet-id': sheetId,
+        'x-sheet-tab': sheetTab
+      };
+      
+      return originalFetch(input, newInit);
+    }
 
     const jsonResponse = (data: any, status = 200) => {
       return new Response(JSON.stringify(data), {

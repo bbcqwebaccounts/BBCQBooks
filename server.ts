@@ -224,6 +224,211 @@ app.post("/api/drive/backup", async (req, res) => {
 
 
 
+app.get("/api/messages", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const sheetId = req.headers['x-sheet-id'] as string;
+    const sheetTab = req.headers['x-sheet-tab'] as string;
+    
+    if (!sheetId || !sheetTab) {
+      return res.status(400).json({ error: "Missing sheet ID or tab in headers." });
+    }
+
+    const safeTab = `'${sheetTab}'`;
+    const response = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${safeTab}!B:J`,
+    });
+
+    const rows = response.data.values || [];
+    if (rows.length === 0) return res.json([]);
+
+    const messages = rows.map((row: any[], index: number) => ({
+      rowIndex: index + 1,
+      logTime: row[0] || '',
+      firstName: row[1] || '',
+      surname: row[2] || '',
+      phone: row[3] || '',
+      email: row[4] || '',
+      scheduledTime: row[5] || '',
+      message: row[6] || '',
+      status: row[7] || '',
+      batchId: row[8] || ''
+    }));
+
+    const validMessages = messages.filter((msg: any) => 
+      msg.batchId && msg.batchId.startsWith('Library') &&
+      msg.phone && 
+      msg.phone.toLowerCase() !== 'phone' && 
+      msg.scheduledTime && 
+      msg.scheduledTime.toLowerCase() !== 'scheduled send date and time' &&
+      msg.scheduledTime.toLowerCase() !== 'scheduled time'
+    );
+    
+    res.json(validMessages);
+  } catch (err: any) {
+    console.error("Sheets API error:", err);
+    res.status(500).json({ error: "Failed to fetch from Google Sheets: " + err.message });
+  }
+});
+
+app.post("/api/messages", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const sheetId = req.headers['x-sheet-id'] as string;
+    const sheetTab = req.headers['x-sheet-tab'] as string;
+    
+    if (!sheetId || !sheetTab) {
+      return res.status(400).json({ error: "Missing sheet ID or tab in headers." });
+    }
+
+    const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = req.body;
+    const logTime = new Date().toLocaleString();
+    const safeTab = `'${sheetTab}'`;
+
+    await sheetsClient.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: `${safeTab}!A:J`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets API error:", err);
+    res.status(500).json({ error: "Failed to append to Google Sheets: " + err.message });
+  }
+});
+
+app.put("/api/messages/:id", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const sheetId = req.headers['x-sheet-id'] as string;
+    const sheetTab = req.headers['x-sheet-tab'] as string;
+    
+    if (!sheetId || !sheetTab) {
+      return res.status(400).json({ error: "Missing sheet ID or tab in headers." });
+    }
+
+    const rowIndex = req.params.id;
+    const { scheduledTime, message, status } = req.body;
+    const safeTab = `'${sheetTab}'`;
+
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${safeTab}!G${rowIndex}:I${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[scheduledTime, message, status]]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets API error:", err);
+    res.status(500).json({ error: "Failed to update Google Sheets: " + err.message });
+  }
+});
+
+app.delete("/api/messages/:id", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const sheetId = req.headers['x-sheet-id'] as string;
+    const sheetTab = req.headers['x-sheet-tab'] as string;
+    
+    if (!sheetId || !sheetTab) {
+      return res.status(400).json({ error: "Missing sheet ID or tab in headers." });
+    }
+
+    const rowIndex = req.params.id;
+    const safeTab = `'${sheetTab}'`;
+
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${safeTab}!I${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [['Cancelled']]
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets API error:", err);
+    res.status(500).json({ error: "Failed to cancel message in Google Sheets: " + err.message });
+  }
+});
+
+app.post("/api/messages/cancel-by-batch", async (req, res) => {
+  if (!sheetsClient) {
+    return res.status(500).json({ error: "Google Sheets is not configured on the server." });
+  }
+
+  try {
+    const sheetId = req.headers['x-sheet-id'] as string;
+    const sheetTab = req.headers['x-sheet-tab'] as string;
+    
+    if (!sheetId || !sheetTab) {
+      return res.status(400).json({ error: "Missing sheet ID or tab in headers." });
+    }
+
+    const { batchIds } = req.body;
+    if (!batchIds || !batchIds.length) return res.json({ success: true });
+
+    const safeTab = `'${sheetTab}'`;
+    const getRes = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${safeTab}!B:J`,
+    });
+
+    const rows = getRes.data.values || [];
+    const dataToUpdate = [];
+    
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const status = row[7];
+      const batchId = row[8];
+      
+      if (batchIds.includes(batchId) && status === 'Queued') {
+        dataToUpdate.push({
+          range: `${safeTab}!I${i + 1}`,
+          values: [['Cancelled']]
+        });
+      }
+    }
+
+    if (dataToUpdate.length > 0) {
+      await sheetsClient.spreadsheets.values.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: dataToUpdate
+        }
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sheets API error:", err);
+    res.status(500).json({ error: "Failed to batch cancel messages in Google Sheets: " + err.message });
+  }
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
