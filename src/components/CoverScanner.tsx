@@ -29,8 +29,8 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
         URL.revokeObjectURL(objectUrl);
         
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
+        const MAX_WIDTH = mode === 'identify' ? 1600 : 800;
+        const MAX_HEIGHT = mode === 'identify' ? 1600 : 800;
         let width = img.width;
         let height = img.height;
 
@@ -56,7 +56,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
         }
         
         ctx.drawImage(img, 0, 0, width, height);
-        const base64Image = canvas.toDataURL('image/jpeg', 0.6);
+        const base64Image = canvas.toDataURL('image/jpeg', mode === 'identify' ? 0.8 : 0.6);
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
         
         // Generate a smaller thumbnail for saving to the database to prevent QuotaExceededError
@@ -167,7 +167,7 @@ export default function CoverScanner({ mode, onResult, onError, className = '', 
             }
           } else if (mode === 'identify') {
             const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-3.1-pro-preview',
               contents: {
                 parts: [
                   {
