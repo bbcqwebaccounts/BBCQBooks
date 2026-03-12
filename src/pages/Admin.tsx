@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Scanner from '../components/Scanner';
 import CoverScanner from '../components/CoverScanner';
+import CoverImage from '../components/CoverImage';
 import { motion, AnimatePresence } from 'motion/react';
 import { augmentBookDataWithAI, augmentSingleFieldWithAI } from '../services/aiService';
 import { 
@@ -141,7 +142,7 @@ export default function Admin() {
   const [isDvd, setIsDvd] = useState(false);
   const [addMessage, setAddMessage] = useState({ type: '', text: '' });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lastAddedBook, setLastAddedBook] = useState<{title: string, cover: string} | null>(null);
+  const [lastAddedBook, setLastAddedBook] = useState<{title: string, cover: string, is_dvd?: boolean} | null>(null);
   const [generatedBarcode, setGeneratedBarcode] = useState<string | null>(null);
   const lastFetchedIsbn = useRef<string>('');
   const lastSuccessfulIsbn = useRef<string | null>(null);
@@ -739,7 +740,7 @@ export default function Admin() {
       if (res.ok) {
         const data = await res.json();
         if (!editingBook) {
-          setLastAddedBook({ title, cover: finalCoverUrl });
+          setLastAddedBook({ title, cover: finalCoverUrl, is_dvd: isDvd });
           setShowSuccessModal(true);
           setIsbn('');
           setTitle('');
@@ -1097,7 +1098,12 @@ export default function Admin() {
       {activeTab === 'loans' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 className="font-bold text-slate-900">Library Loans</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900">Library Loans</h3>
+              <button onClick={fetchLoans} className="p-2 text-slate-400 hover:text-slate-600 transition-colors" title="Refresh Loans">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <span className="text-sm font-medium text-slate-600">Show Returned</span>
               <div className="relative">
@@ -1224,13 +1230,11 @@ export default function Admin() {
                     <tr key={book.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => handleEdit(book)}>
                       <td className="p-4 flex items-center gap-3">
                         <div className="w-10 h-14 bg-slate-100 rounded overflow-hidden flex-shrink-0">
-                          {book.cover_url ? (
-                            <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <BookIcon className="w-4 h-4 text-slate-300" />
-                            </div>
-                          )}
+                          <CoverImage 
+                            cover_url={book.cover_url || undefined} 
+                            title={book.title} 
+                            is_dvd={!!(book as any).is_dvd} 
+                          />
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 line-clamp-1">{book.title}</p>
@@ -2382,7 +2386,11 @@ export default function Admin() {
                 </div>
                 {coverUrl && (
                   <div className="mt-3 relative w-32 h-48 rounded-lg overflow-hidden border border-slate-200 shadow-sm">
-                    <img src={coverUrl} alt="Cover preview" className="w-full h-full object-cover" />
+                    <CoverImage 
+                      cover_url={coverUrl} 
+                      title="Cover preview" 
+                      is_dvd={isDvd} 
+                    />
                     <button
                       type="button"
                       onClick={() => setCoverUrl('')}
@@ -2450,7 +2458,11 @@ export default function Admin() {
             </p>
             {lastAddedBook?.cover && (
               <div className="w-32 h-48 mx-auto mb-8 rounded-lg overflow-hidden shadow-md border border-slate-100">
-                <img src={lastAddedBook.cover} alt="Cover" className="w-full h-full object-cover" />
+                <CoverImage 
+                  cover_url={lastAddedBook.cover} 
+                  title={lastAddedBook.title} 
+                  is_dvd={lastAddedBook.is_dvd} 
+                />
               </div>
             )}
             <div className="flex flex-col gap-3">

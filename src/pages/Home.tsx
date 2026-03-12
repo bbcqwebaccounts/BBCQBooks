@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Book as BookIcon, ScanLine, ArrowLeftRight, X, ExternalLink, ShoppingCart, LayoutGrid, List, Edit2, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import CoverImage from '../components/CoverImage';
 
 interface Book {
   id: number;
@@ -484,21 +485,11 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 md:p-8">
                   <div className="md:col-span-2">
                     <div className="aspect-[3/4] bg-slate-50 rounded-2xl overflow-hidden shadow-md border border-slate-100 flex items-center justify-center relative">
-                      {selectedBook.cover_url ? (
-                        <img 
-                          src={selectedBook.cover_url} 
-                          alt={selectedBook.title} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer" 
-                        />
-                      ) : (
-                        <BookIcon className="w-20 h-20 text-slate-200" />
-                      )}
-                      {selectedBook.is_dvd && (
-                        <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider backdrop-blur-sm">
-                          DVD
-                        </div>
-                      )}
+                      <CoverImage 
+                        cover_url={selectedBook.cover_url || undefined} 
+                        title={selectedBook.title} 
+                        is_dvd={!!(selectedBook as any).is_dvd} 
+                      />
                     </div>
                   </div>
                   

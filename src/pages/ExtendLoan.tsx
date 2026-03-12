@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CalendarCheck, AlertCircle, Loader2, ArrowLeft, BookOpen, CheckSquare, Square } from 'lucide-react';
 import { motion } from 'motion/react';
+import CoverImage from '../components/CoverImage';
 
 export default function ExtendLoan() {
   const [searchParams] = useSearchParams();
@@ -171,13 +172,13 @@ export default function ExtendLoan() {
             
             <div className={`p-4 rounded-2xl border ${canExtend(targetLoan) ? 'bg-slate-50 border-slate-100' : 'bg-rose-50 border-rose-100'}`}>
               <div className="flex items-start gap-3">
-                {targetLoan.cover_url ? (
-                  <img src={targetLoan.cover_url} alt={targetLoan.title} className="w-12 h-16 object-cover rounded shadow-sm" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center text-slate-400">
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                )}
+                <div className="w-12 h-16 rounded overflow-hidden shadow-sm">
+                  <CoverImage 
+                    cover_url={targetLoan.cover_url || undefined} 
+                    title={targetLoan.title} 
+                    is_dvd={!!targetLoan.is_dvd} 
+                  />
+                </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-slate-900 line-clamp-2">{targetLoan.title}</h3>
                   <p className="text-sm text-slate-500 mt-1">
