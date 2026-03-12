@@ -1365,7 +1365,7 @@ export default function Admin() {
                       </div>
                     </td>
                   </tr>
-                ) : messages.filter(m => m.status === 'Queued' || showSentMessages).length === 0 ? (
+                ) : messages.filter(m => (m.status === 'Queued' || showSentMessages) && m.batchId.startsWith('Library')).length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-500">
                       {messages.length > 0 
@@ -1374,7 +1374,7 @@ export default function Admin() {
                     </td>
                   </tr>
                 ) : (
-                  getSortedData(messages.filter(m => m.status === 'Queued' || showSentMessages), 'messages').map(msg => (
+                  getSortedData(messages.filter(m => (m.status === 'Queued' || showSentMessages) && m.batchId.startsWith('Library')), 'messages').map(msg => (
                     <tr key={msg.rowIndex} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-sm font-medium text-slate-900 whitespace-nowrap">
                         {msg.scheduledTime}
