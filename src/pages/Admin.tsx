@@ -116,6 +116,22 @@ export default function Admin() {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
   };
 
+  const formatDateForEdit = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -1415,7 +1431,10 @@ export default function Admin() {
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button 
-                            onClick={() => setEditingMessage(msg)}
+                            onClick={() => {
+                              const formatted = formatDateForEdit(msg.scheduledTime);
+                              setEditingMessage({...msg, scheduledTime: formatted});
+                            }}
                             className="p-2 text-slate-400 hover:text-[#1a202c] hover:bg-slate-100 rounded-lg transition-colors"
                             title="Edit Message"
                           >

@@ -122,7 +122,33 @@ Object.defineProperty(window, 'fetch', {
         if (path === '/api/messages' && method === 'POST') {
           const body = JSON.parse(init?.body as string);
           const { firstName, surname, phone, email, scheduledTime, message, status, batchId } = body;
-          const logTime = new Date().toLocaleString();
+          
+          const now = new Date();
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const logTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+          
+          let formattedScheduledTime = scheduledTime;
+          if (scheduledTime) {
+            let d = new Date(scheduledTime);
+            
+            // Check if it's DD/MM/YYYY format
+            if (typeof scheduledTime === 'string' && scheduledTime.includes('/')) {
+              const parts = scheduledTime.split(/[\s/:]/);
+              if (parts.length >= 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const hours = parts[3] ? parseInt(parts[3], 10) : 0;
+                const minutes = parts[4] ? parseInt(parts[4], 10) : 0;
+                const seconds = parts[5] ? parseInt(parts[5], 10) : 0;
+                d = new Date(year, month, day, hours, minutes, seconds);
+              }
+            }
+            
+            if (!isNaN(d.getTime())) {
+              formattedScheduledTime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            }
+          }
 
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
@@ -132,7 +158,7 @@ Object.defineProperty(window, 'fetch', {
                 action: 'addMessage',
                 sheetId,
                 sheetTab,
-                values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+                values: [[logTime, firstName, surname, phone, email, formattedScheduledTime, message, status, batchId]]
               })
             });
             const data = await res.json();
@@ -145,7 +171,7 @@ Object.defineProperty(window, 'fetch', {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                values: [[logTime, firstName, surname, phone, email, scheduledTime, message, status, batchId]]
+                values: [[logTime, firstName, surname, phone, email, formattedScheduledTime, message, status, batchId]]
               })
             });
             await handleGoogleSheetsError(res);
@@ -158,6 +184,27 @@ Object.defineProperty(window, 'fetch', {
           const body = JSON.parse(init?.body as string);
           const { scheduledTime, message, status } = body;
 
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          let formattedScheduledTime = scheduledTime;
+          if (scheduledTime) {
+            let d = new Date(scheduledTime);
+            if (typeof scheduledTime === 'string' && scheduledTime.includes('/')) {
+              const parts = scheduledTime.split(/[\s/:]/);
+              if (parts.length >= 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const hours = parts[3] ? parseInt(parts[3], 10) : 0;
+                const minutes = parts[4] ? parseInt(parts[4], 10) : 0;
+                const seconds = parts[5] ? parseInt(parts[5], 10) : 0;
+                d = new Date(year, month, day, hours, minutes, seconds);
+              }
+            }
+            if (!isNaN(d.getTime())) {
+              formattedScheduledTime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            }
+          }
+
           if (scriptUrl) {
             const res = await originalFetch(scriptUrl, {
               method: 'POST',
@@ -167,7 +214,7 @@ Object.defineProperty(window, 'fetch', {
                 sheetId,
                 sheetTab,
                 rowIndex,
-                values: [[scheduledTime, message, status]]
+                values: [[formattedScheduledTime, message, status]]
               })
             });
             const data = await res.json();
@@ -180,7 +227,7 @@ Object.defineProperty(window, 'fetch', {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                values: [[scheduledTime, message, status]]
+                values: [[formattedScheduledTime, message, status]]
               })
             });
             await handleGoogleSheetsError(res);
@@ -430,7 +477,7 @@ Object.defineProperty(window, 'fetch', {
           const scheduledDate = new Date(dueDate);
           scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
           scheduledDate.setHours(10, 0, 0, 0);
-          const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+          const scheduledTimeStr = `${scheduledDate.getFullYear()}-${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}-${scheduledDate.getDate().toString().padStart(2, '0')} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
           
           const [firstName] = loan.user_name.split(' ');
           const extensionUrl = `${window.location.origin}/extend?token=${loan.extension_token}`;
@@ -499,7 +546,7 @@ Object.defineProperty(window, 'fetch', {
           const scheduledDate = new Date(newDueDate);
           scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
           scheduledDate.setHours(10, 0, 0, 0);
-          const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+          const scheduledTimeStr = `${scheduledDate.getFullYear()}-${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}-${scheduledDate.getDate().toString().padStart(2, '0')} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
           
           const [firstName] = updated.user_name.split(' ');
           const extensionUrl = `${window.location.origin}/extend?token=${updated.extension_token}`;
@@ -589,7 +636,7 @@ Object.defineProperty(window, 'fetch', {
         const scheduledDate = new Date(newDueDate);
         scheduledDate.setDate(scheduledDate.getDate() - offsetDays);
         scheduledDate.setHours(10, 0, 0, 0);
-        const scheduledTimeStr = `${scheduledDate.getDate().toString().padStart(2, '0')}/${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}/${scheduledDate.getFullYear()} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
+        const scheduledTimeStr = `${scheduledDate.getFullYear()}-${(scheduledDate.getMonth() + 1).toString().padStart(2, '0')}-${scheduledDate.getDate().toString().padStart(2, '0')} ${scheduledDate.getHours().toString().padStart(2, '0')}:${scheduledDate.getMinutes().toString().padStart(2, '0')}:${scheduledDate.getSeconds().toString().padStart(2, '0')}`;
         
         const [firstName] = updated.user_name.split(' ');
         const extensionUrl = `${window.location.origin}/extend?token=${updated.extension_token}`;

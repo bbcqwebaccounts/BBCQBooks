@@ -168,7 +168,7 @@ export default function Borrow() {
                     surname,
                     phone,
                     email,
-                    scheduledTime: new Date().toLocaleString(),
+                    scheduledTime: new Date().toISOString(),
                     message,
                     status: 'Queued',
                     batchId: `Library-${loan.id}`
