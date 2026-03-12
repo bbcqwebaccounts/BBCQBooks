@@ -99,6 +99,23 @@ export default function Admin() {
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+    
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    
+    const day = pad(date.getDate());
+    const month = pad(date.getMonth() + 1);
+    const year = date.getFullYear();
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  };
+
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -1377,7 +1394,7 @@ export default function Admin() {
                   getSortedData(messages.filter(m => (m.status === 'Queued' || showSentMessages) && m.batchId.startsWith('Library')), 'messages').map(msg => (
                     <tr key={msg.rowIndex} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-sm font-medium text-slate-900 whitespace-nowrap">
-                        {msg.scheduledTime}
+                        {formatDate(msg.scheduledTime)}
                       </td>
                       <td className="p-4">
                         <p className="font-medium text-slate-900">{msg.firstName} {msg.surname}</p>
