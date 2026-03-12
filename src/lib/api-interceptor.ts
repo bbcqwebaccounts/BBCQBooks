@@ -78,7 +78,7 @@ Object.defineProperty(window, 'fetch', {
         const encodedTab = encodeURIComponent(safeTab);
 
         if (path === '/api/messages' && method === 'GET') {
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
           await handleGoogleSheetsError(res);
@@ -135,7 +135,7 @@ Object.defineProperty(window, 'fetch', {
           const body = JSON.parse(init?.body as string);
           const { scheduledTime, message, status } = body;
 
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!G${rowIndex}:I${rowIndex}?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!F${rowIndex}:H${rowIndex}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -152,7 +152,7 @@ Object.defineProperty(window, 'fetch', {
         if (path.match(/^\/api\/messages\/\d+$/) && method === 'DELETE') {
           const rowIndex = path.split('/').pop();
           
-          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!I${rowIndex}?valueInputOption=USER_ENTERED`, {
+          const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!H${rowIndex}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: { 
               Authorization: `Bearer ${accessToken}`,
@@ -171,7 +171,7 @@ Object.defineProperty(window, 'fetch', {
           const { batchIds } = body;
           if (!batchIds || !batchIds.length) return jsonResponse({ success: true });
 
-          const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
+          const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
             headers: { Authorization: `Bearer ${accessToken}` }
           });
           await handleGoogleSheetsError(getRes);
@@ -189,7 +189,7 @@ Object.defineProperty(window, 'fetch', {
             if (batchIds.includes(batchId) && status === 'Queued') {
               console.log('Found reminder to cancel:', batchId, status);
               dataToUpdate.push({
-                range: `${safeTab}!I${i + 1}`,
+                range: `${safeTab}!H${i + 1}`,
                 values: [['Cancelled']]
               });
             }
@@ -411,8 +411,15 @@ Object.defineProperty(window, 'fetch', {
       for (const token of body.tokens) {
         const loan = db.getLoanByToken(token);
         if (loan) {
+          let extendDays = 7;
+          if (loan.original_due_date && loan.borrow_date) {
+            const borrowDate = new Date(loan.borrow_date);
+            const originalDueDate = new Date(loan.original_due_date);
+            extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+
           const newDueDate = new Date(loan.due_date);
-          newDueDate.setDate(newDueDate.getDate() + 7);
+          newDueDate.setDate(newDueDate.getDate() + extendDays);
           
           if (maxBorrowWeeks > 0) {
             const borrowDate = new Date(loan.borrow_date);
@@ -494,8 +501,15 @@ Object.defineProperty(window, 'fetch', {
       const id = parseInt(path.split('/')[3]);
       const loan = db.getLoanById(id);
       if (loan) {
+        let extendDays = 7;
+        if (loan.original_due_date && loan.borrow_date) {
+          const borrowDate = new Date(loan.borrow_date);
+          const originalDueDate = new Date(loan.original_due_date);
+          extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
         const newDueDate = new Date(loan.due_date);
-        newDueDate.setDate(newDueDate.getDate() + 7);
+        newDueDate.setDate(newDueDate.getDate() + extendDays);
 
         const maxBorrowWeeksStr = db.getSetting('max_borrow_weeks');
         const maxBorrowWeeks = maxBorrowWeeksStr ? parseInt(maxBorrowWeeksStr) : 0;

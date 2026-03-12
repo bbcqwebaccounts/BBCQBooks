@@ -157,7 +157,7 @@ export default function Borrow() {
               const message = template
                 .replace('{name}', firstName)
                 .replace('{title}', book.title)
-                .replace('{due_date}', new Date(loan.due_date).toLocaleDateString());
+                .replace('{due_date}', new Date(loan.due_date).toLocaleDateString('en-AU'));
               
               try {
                 await fetch('/api/messages', {

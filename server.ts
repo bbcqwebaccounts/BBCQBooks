@@ -240,7 +240,7 @@ app.get("/api/messages", async (req, res) => {
     const safeTab = `'${sheetTab}'`;
     const response = await sheetsClient.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${safeTab}!B:J`,
+      range: `${safeTab}!A:J`,
     });
 
     const rows = response.data.values || [];
@@ -328,7 +328,7 @@ app.put("/api/messages/:id", async (req, res) => {
 
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${safeTab}!G${rowIndex}:I${rowIndex}`,
+      range: `${safeTab}!F${rowIndex}:H${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[scheduledTime, message, status]]
@@ -360,7 +360,7 @@ app.delete("/api/messages/:id", async (req, res) => {
 
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${safeTab}!I${rowIndex}`,
+      range: `${safeTab}!H${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [['Cancelled']]
@@ -393,7 +393,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
     const safeTab = `'${sheetTab}'`;
     const getRes = await sheetsClient.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${safeTab}!B:J`,
+      range: `${safeTab}!A:J`,
     });
 
     const rows = getRes.data.values || [];
@@ -406,7 +406,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
       
       if (batchIds.includes(batchId) && status === 'Queued') {
         dataToUpdate.push({
-          range: `${safeTab}!I${i + 1}`,
+          range: `${safeTab}!H${i + 1}`,
           values: [['Cancelled']]
         });
       }

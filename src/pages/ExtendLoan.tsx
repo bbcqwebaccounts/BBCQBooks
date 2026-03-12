@@ -58,9 +58,15 @@ export default function ExtendLoan() {
 
   const canExtend = (loan: any) => {
     if (!maxBorrowWeeks) return true;
+    let extendDays = 7;
+    if (loan.original_due_date && loan.borrow_date) {
+      const borrowDate = new Date(loan.borrow_date);
+      const originalDueDate = new Date(loan.original_due_date);
+      extendDays = Math.round((originalDueDate.getTime() - borrowDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
     const borrowDate = new Date(loan.borrow_date);
     const newDueDate = new Date(loan.due_date);
-    newDueDate.setDate(newDueDate.getDate() + 7);
+    newDueDate.setDate(newDueDate.getDate() + extendDays);
     const diffTime = Math.abs(newDueDate.getTime() - borrowDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= maxBorrowWeeks * 7;
@@ -105,7 +111,7 @@ export default function ExtendLoan() {
 
             // 2. Create new reminders
             for (const loan of results) {
-              if (loan.user_phone) {
+              if (loan.user_phone && loan.sms_scheduled_time) {
                 const [firstName, ...surnameParts] = loan.user_name.split(' ');
                 const surname = surnameParts.join(' ');
                 
@@ -167,7 +173,7 @@ export default function ExtendLoan() {
                 <CalendarCheck className="w-8 h-8" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-2">Extend Loan</h2>
-              <p className="text-slate-600">Would you like to extend your loan by 1 week?</p>
+              <p className="text-slate-600">Would you like to extend your loan?</p>
             </div>
             
             <div className={`p-4 rounded-2xl border ${canExtend(targetLoan) ? 'bg-slate-50 border-slate-100' : 'bg-rose-50 border-rose-100'}`}>
@@ -182,7 +188,7 @@ export default function ExtendLoan() {
                 <div className="flex-1">
                   <h3 className="font-bold text-slate-900 line-clamp-2">{targetLoan.title}</h3>
                   <p className="text-sm text-slate-500 mt-1">
-                    Current Due: {new Date(targetLoan.due_date).toLocaleDateString()}
+                    Current Due: {new Date(targetLoan.due_date).toLocaleDateString('en-AU')}
                   </p>
                   {!canExtend(targetLoan) && (
                     <p className="text-xs text-rose-600 mt-2 font-medium">
@@ -216,7 +222,7 @@ export default function ExtendLoan() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-900 truncate">{loan.title}</p>
-                        <p className="text-xs text-slate-500">Due: {new Date(loan.due_date).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-500">Due: {new Date(loan.due_date).toLocaleDateString('en-AU')}</p>
                         {!extendable && (
                           <p className="text-[10px] text-rose-500 mt-1 font-medium">Max limit reached</p>
                         )}
@@ -265,7 +271,7 @@ export default function ExtendLoan() {
                       <span className="text-emerald-800 font-medium">Loan #{r.id}</span>
                       <span className="text-emerald-900 font-bold">
                         {r.new_due_date && !isNaN(new Date(r.new_due_date).getTime()) 
-                          ? new Date(r.new_due_date).toLocaleDateString() 
+                          ? new Date(r.new_due_date).toLocaleDateString('en-AU') 
                           : 'Invalid Date'}
                       </span>
                     </div>
