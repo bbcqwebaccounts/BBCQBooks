@@ -86,7 +86,7 @@ Object.defineProperty(window, 'fetch', {
             if (data.error) throw new Error(data.error);
             rows = data.values || [];
           } else {
-            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
               headers: { Authorization: `Bearer ${accessToken}` }
             });
             await handleGoogleSheetsError(res);
@@ -137,7 +137,7 @@ Object.defineProperty(window, 'fetch', {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
           } else {
-            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
               method: 'POST',
               headers: { 
                 Authorization: `Bearer ${accessToken}`,
@@ -172,7 +172,7 @@ Object.defineProperty(window, 'fetch', {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
           } else {
-            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!F${rowIndex}:H${rowIndex}?valueInputOption=USER_ENTERED`, {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!G${rowIndex}:I${rowIndex}?valueInputOption=USER_ENTERED`, {
               method: 'PUT',
               headers: { 
                 Authorization: `Bearer ${accessToken}`,
@@ -204,7 +204,7 @@ Object.defineProperty(window, 'fetch', {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
           } else {
-            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!H${rowIndex}?valueInputOption=USER_ENTERED`, {
+            const res = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!I${rowIndex}?valueInputOption=USER_ENTERED`, {
               method: 'PUT',
               headers: { 
                 Authorization: `Bearer ${accessToken}`,
@@ -238,7 +238,7 @@ Object.defineProperty(window, 'fetch', {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
           } else {
-            const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!A:J`, {
+            const getRes = await originalFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodedTab}!B:J`, {
               headers: { Authorization: `Bearer ${accessToken}` }
             });
             await handleGoogleSheetsError(getRes);
@@ -253,7 +253,7 @@ Object.defineProperty(window, 'fetch', {
               
               if (batchIds.includes(batchId) && status === 'Queued') {
                 dataToUpdate.push({
-                  range: `${safeTab}!H${i + 1}`,
+                  range: `${safeTab}!I${i + 1}`,
                   values: [['Cancelled']]
                 });
               }

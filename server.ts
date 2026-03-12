@@ -240,7 +240,7 @@ app.get("/api/messages", async (req, res) => {
     const safeTab = `'${sheetTab}'`;
     const response = await sheetsClient.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${safeTab}!A:J`,
+      range: `${safeTab}!B:J`,
     });
 
     const rows = response.data.values || [];
@@ -291,7 +291,7 @@ app.post("/api/messages", async (req, res) => {
 
     await sheetsClient.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: `${safeTab}!A:J`,
+      range: `${safeTab}!B:J`,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
@@ -325,7 +325,7 @@ app.put("/api/messages/:id", async (req, res) => {
 
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${safeTab}!F${rowIndex}:H${rowIndex}`,
+      range: `${safeTab}!G${rowIndex}:I${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[scheduledTime, message, status]]
@@ -357,7 +357,7 @@ app.delete("/api/messages/:id", async (req, res) => {
 
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${safeTab}!H${rowIndex}`,
+      range: `${safeTab}!I${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [['Cancelled']]
@@ -390,7 +390,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
     const safeTab = `'${sheetTab}'`;
     const getRes = await sheetsClient.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${safeTab}!A:J`,
+      range: `${safeTab}!B:J`,
     });
 
     const rows = getRes.data.values || [];
@@ -403,7 +403,7 @@ app.post("/api/messages/cancel-by-batch", async (req, res) => {
       
       if (batchIds.includes(batchId) && status === 'Queued') {
         dataToUpdate.push({
-          range: `${safeTab}!H${i + 1}`,
+          range: `${safeTab}!I${i + 1}`,
           values: [['Cancelled']]
         });
       }
@@ -526,7 +526,7 @@ app.get("/api/cron/weekly-overdue", async (req, res) => {
     if (messagesToAppend.length > 0) {
       await sheetsClient.spreadsheets.values.append({
         spreadsheetId: sheetId,
-        range: `${safeTab}!A:J`,
+        range: `${safeTab}!B:J`,
         valueInputOption: 'USER_ENTERED',
         insertDataOption: 'INSERT_ROWS',
         requestBody: {
